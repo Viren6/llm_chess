@@ -80,13 +80,13 @@ uv run python run_multiple_games.py
 - Aggregates results in `aggregate_results.json` and individual logs in `{timestamp}.json`.
 
 ### Maia anchor sweep (Elo)
-Play the Black-side LLM against the **Maia 3 anchor ladder** and estimate a single anchored Elo. Requires Maia set up (Installation §5) with `llm_chess.maia_path` pointing at `maia3-79m`.
+Play the LLM against the **Maia 3 anchor ladder** with **balanced colors** and estimate a single anchored Elo. Requires Maia set up (Installation §5) with `llm_chess.maia_path` pointing at `maia3-79m`. Configure BOTH `.env` sides (`_W` and `_B`) to your model — the LLM plays each color.
 ```
-uv run python run_maia_anchors.py --reps 50      # vs Maia Elo 600/800/1000/1200/1400
-uv run python data/maia_elo.py                   # fit Elo, write data/maia_elo.csv
+uv run python run_maia_anchors.py --reps 25      # 25 games/color/anchor across Elo 600..1400
+uv run python data/maia_elo.py                   # fit color-balanced Elo, write data/maia_elo.csv
 ```
-- The LLM under test is whatever `.env` resolves on the Black side; re-run per model to compare several.
-- Per-anchor runs land in `_logs/engine_vs_llm/maia-elo-<N>/<llm>/...`. `data/maia_elo.py` fits Elo with the same method as Dragon (Bradley-Terry MLE + 95% CI, +35 white-advantage) using each Maia Elo directly as the anchor, and prints per-anchor scores so you can see which rungs sit in the informative 35–65% band.
+- `--reps N` plays N games as White and N as Black per anchor; the default plays both colors so White's first-move advantage is **balanced out, not corrected for**.
+- Per-anchor runs land in `_logs/engine_vs_llm/maia-elo-<N>/<llm>/...` (re-running accumulates). `data/maia_elo.py` fits Elo with the same MLE as Dragon (Bradley-Terry + 95% CI) using each Maia Elo directly as the anchor, but with **colors forced balanced**: each anchor's score is the equal-weight mean of the White-side and Black-side scores (no white-advantage term), and any single-color anchor is skipped. Per-anchor scores are printed so you can see which rungs sit in the informative 35–65% band.
 
 ## Game Rules
 
