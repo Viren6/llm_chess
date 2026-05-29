@@ -42,46 +42,77 @@ MAIA = llm_chess.PlayerType.CHESS_ENGINE_MAIA
 
 _ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
+# Current batch's output.txt (mutable holder). The _Tee objects are installed ONCE for the
+# whole run (see _install_tee) and never closed, so anything that caches sys.stdout — notably
+# AG2's logging handler — keeps a valid reference; only the file they point at is swapped per
+# batch. An earlier version closed a per-batch tee instead, which left AG2 writing to a closed
+# file on the next batch ("I/O operation on closed file").
+_CUR_LOGFILE = [None]
+
 
 class _Tee:
-    """Forward writes to the real console and to a file (ANSI codes stripped)."""
+    """Forward writes to the real console and to the current batch file (ANSI stripped)."""
 
-    def __init__(self, console, logfile):
+    def __init__(self, console):
         self._console = console
-        self._logfile = logfile
 
     def write(self, data):
         self._console.write(data)
-        self._logfile.write(_ANSI_RE.sub("", data))
+        f = _CUR_LOGFILE[0]
+        if f is not None and not f.closed:
+            try:
+                f.write(_ANSI_RE.sub("", data))
+            except ValueError:
+                pass
         return len(data)
 
     def flush(self):
-        self._console.flush()
-        self._logfile.flush()
+        try:
+            self._console.flush()
+        except Exception:
+            pass
+        f = _CUR_LOGFILE[0]
+        if f is not None and not f.closed:
+            try:
+                f.flush()
+            except ValueError:
+                pass
 
     def __getattr__(self, name):  # delegate isatty/encoding/fileno/... to the console
         return getattr(self._console, name)
 
 
 @contextlib.contextmanager
-def _console_to_file(log_folder, filename="output.txt"):
-    """Tee stdout+stderr into <log_folder>/output.txt for the duration, then restore.
-
-    Deliberately NOT run_multiple_games.setup_console_logging: that swaps sys.stdout
-    without a teardown, so calling it once per batch would nest the wrappers and leak
-    each game's output into every earlier file. This restores the originals and closes
-    the file every time, so each batch gets its own clean output.txt.
-    """
-    os.makedirs(log_folder, exist_ok=True)
-    f = open(os.path.join(log_folder, filename), "w", encoding="utf-8")
+def _install_tee():
+    """Install persistent stdout/stderr tees for the whole run; restore them at the end."""
     orig_out, orig_err = sys.stdout, sys.stderr
-    sys.stdout, sys.stderr = _Tee(orig_out, f), _Tee(orig_err, f)
+    sys.stdout, sys.stderr = _Tee(orig_out), _Tee(orig_err)
     try:
         yield
     finally:
         sys.stdout, sys.stderr = orig_out, orig_err
-        f.flush()
-        f.close()
+        f = _CUR_LOGFILE[0]
+        if f is not None and not f.closed:
+            f.close()
+        _CUR_LOGFILE[0] = None
+
+
+@contextlib.contextmanager
+def _batch_log(log_folder, filename="output.txt"):
+    """Point the persistent tee at <log_folder>/output.txt for one batch."""
+    os.makedirs(log_folder, exist_ok=True)
+    f = open(os.path.join(log_folder, filename), "w", encoding="utf-8")
+    prev = _CUR_LOGFILE[0]
+    _CUR_LOGFILE[0] = f
+    try:
+        yield
+    finally:
+        _CUR_LOGFILE[0] = prev
+        try:
+            f.flush()
+            f.close()
+        except Exception:
+            pass
 
 
 def _model_of(player) -> str:
@@ -114,7 +145,7 @@ def _run_batch(elo, llm_color, reps, cfg_w, cfg_b, model_slug):
     agg = {"total_games": 0, "white_wins": 0, "black_wins": 0, "draws": 0}
     pw_info = pb_info = {"name": "", "model": ""}
     # Tee this batch's full console (every model turn) into <log_folder>/output.txt.
-    with _console_to_file(log_folder):
+    with _batch_log(log_folder):
         for _ in range(reps):
             stats, pw, pb = llm_chess.run(
                 log_dir=log_folder,
@@ -222,11 +253,12 @@ def main():
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
 
     colors = ["white", "black"] if args.colors == "both" else [args.colors]
-    for elo in args.elos:
-        for color in colors:
-            print(f"\n\033[95m=== Maia Elo {elo} | LLM as {color} "
-                  f"({args.reps} game(s)) ===\033[0m")
-            _run_batch(elo, color, args.reps, cfg_w, cfg_b, model_slug)
+    with _install_tee():
+        for elo in args.elos:
+            for color in colors:
+                print(f"\n\033[95m=== Maia Elo {elo} | LLM as {color} "
+                      f"({args.reps} game(s)) ===\033[0m")
+                _run_batch(elo, color, args.reps, cfg_w, cfg_b, model_slug)
 
 
 def _model_of_config(cfg) -> str:
