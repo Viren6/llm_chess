@@ -163,6 +163,9 @@ def main():
                     help="Maia nucleus-sampling threshold (1.0 = disabled)")
     ap.add_argument("--llm-temperature", type=float, default=None,
                     help="pin the LLM sampling temperature (default: provider default, ~1.0)")
+    ap.add_argument("--provider", default=None,
+                    help="force a single OpenRouter provider endpoint, e.g. 'venice/bf16' "
+                         "(sets provider.order=[<slug>], allow_fallbacks=false)")
     args = ap.parse_args()
 
     if args.maia_path is not None:
@@ -181,10 +184,17 @@ def main():
     llm_chess.max_api_retries = 6
     llm_chess.api_retry_delay = 2.0
 
-    # Pin the LLM temperature if requested; otherwise the provider default (~1.0) applies.
-    hp = ({"hyperparams": {"temperature": args.llm_temperature}}
-          if args.llm_temperature is not None else None)
-    cfg_w, cfg_b = get_llms(white_hyperparams=hp, black_hyperparams=hp)  # reads .env (_W and _B)
+    # Per-side LLM overrides: optionally pin temperature, and/or force an OpenRouter
+    # provider. provider_overrides merges into config_list[0]; AG2 forwards `extra_body`
+    # to the OpenAI create() call, and OpenRouter reads the `provider` field from it.
+    hp = {}
+    if args.llm_temperature is not None:
+        hp["hyperparams"] = {"temperature": args.llm_temperature}
+    if args.provider is not None:
+        hp["provider_overrides"] = {
+            "extra_body": {"provider": {"order": [args.provider], "allow_fallbacks": False}}
+        }
+    cfg_w, cfg_b = get_llms(white_hyperparams=hp or None, black_hyperparams=hp or None)
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
 
     colors = ["white", "black"] if args.colors == "both" else [args.colors]
