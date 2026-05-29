@@ -529,6 +529,98 @@ class ChessEngineDragonAgent(GameAgent):
             return None
 
 
+class ChessEngineMaiaAgent(GameAgent):
+    """
+    A chess agent that uses the Maia 3 human-like engine as a fixed-strength,
+    Elo-calibrated opponent. Maia 3 is a move-prediction network conditioned on a
+    target rating, so its "level" IS its Elo (e.g. 1000). It is launched as a UCI
+    subprocess via the `maia3-79m --elo <N> [--use-uci-history]` entry point and
+    driven through python-chess, exactly as in the standalone match harness.
+
+    Unlike the Stockfish/Dragon agents (which open a fresh engine subprocess every
+    move), this agent keeps ONE engine process alive for the whole game: Maia loads
+    a neural net at startup, so a per-move relaunch would reload the model on every
+    ply. The process is closed in close()/__del__.
+
+    Parameters:
+        board (chess.Board): The shared game board (mutated by the harness).
+        make_move_action (str): The action string used to emit a move.
+        elo (int): Target playing strength passed to Maia via `--elo`. This is the
+            anchor Elo used downstream by the rating estimator.
+        time_limit (float, optional): Per-move time limit (s). Default 0.2.
+        maia_path (str, optional): Path to the maia3 UCI executable/entry point.
+        use_uci_history (bool, optional): Pass `--use-uci-history` so Maia conditions
+            on the move history (matches the standalone setup). Default True.
+        remove_history (bool, optional): If True, reconstruct the board from FEN
+            before querying (drops the move stack). Default False so Maia sees the
+            full game history that `--use-uci-history` expects.
+    """
+
+    def __init__(
+        self,
+        board,
+        make_move_action: str,
+        elo: int = 1000,
+        time_limit: float = 0.2,
+        maia_path: str = "maia3-79m",
+        use_uci_history: bool = True,
+        remove_history: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.board = board
+        self.make_move_action = make_move_action
+        self.elo = elo
+        self.time_limit = time_limit
+        self.maia_path = maia_path
+        self.use_uci_history = use_uci_history
+        self.remove_history = remove_history
+        self._engine: Optional[chess.engine.SimpleEngine] = None
+
+    def _get_engine(self) -> chess.engine.SimpleEngine:
+        if self._engine is None:
+            cmd = [self.maia_path, "--elo", str(self.elo)]
+            if self.use_uci_history:
+                cmd.append("--use-uci-history")
+            self._engine = chess.engine.SimpleEngine.popen_uci(cmd)
+        return self._engine
+
+    def close(self) -> None:
+        if self._engine is not None:
+            try:
+                self._engine.quit()
+            except Exception:
+                pass
+            self._engine = None
+
+    def __del__(self):
+        self.close()
+
+    def generate_reply(
+        self,
+        messages: Optional[List[Dict[str, Any]]] = None,
+        sender: Optional[ConversableAgent] = None,
+        **kwargs: Any,
+    ) -> Union[str, Dict, None]:
+        if self.should_terminate(messages):
+            return None
+
+        try:
+            engine = self._get_engine()
+            b = self.board
+            if self.remove_history:
+                b = chess.Board(b.fen())
+            result = engine.play(b, chess.engine.Limit(time=self.time_limit))
+            move = result.move
+            return f"{self.make_move_action} {move.uci()}"
+        except Exception as e:
+            print(f"Error using Maia engine: {e}")
+            # Drop the (possibly dead) subprocess so the next move reopens cleanly.
+            self.close()
+            return None
+
+
 class NonGameAgent(GameAgent):
     """
     A Network-of-Networks (NoN) GameAgent that routes queries through multiple LLMs and synthesizes their responses.

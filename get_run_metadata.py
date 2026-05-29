@@ -159,6 +159,7 @@ def collect_run_metadata(
         pt in (
             llm_chess.PlayerType.CHESS_ENGINE_STOCKFISH,
             llm_chess.PlayerType.CHESS_ENGINE_DRAGON,
+            llm_chess.PlayerType.CHESS_ENGINE_MAIA,
         )
         for pt in (llm_chess.white_player_type, llm_chess.black_player_type)
     )
@@ -177,6 +178,13 @@ def collect_run_metadata(
                 "reset_history": llm_chess.reset_dragon_history,
                 "level": llm_chess.dragon_level,
                 "time_per_move": llm_chess.dragon_time_per_move,
+            },
+            "maia": {
+                "path": llm_chess.maia_path,
+                "reset_history": llm_chess.reset_maia_history,
+                "elo": llm_chess.maia_elo,
+                "use_uci_history": llm_chess.maia_use_uci_history,
+                "time_per_move": llm_chess.maia_time_per_move,
             },
         }
 

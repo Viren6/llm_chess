@@ -42,6 +42,20 @@ See the [live leaderboard](https://maxim-saplin.github.io/llm_chess/) for rankin
 5. **Chess Engines** (optional, for stronger opponents):
    - **Komodo Dragon**: Download binaries from [komodochess.com](https://komodochess.com/installation.htm) and place in `dragon/`. Set `llm_chess.dragon_path`.
    - **Stockfish**: Install via `brew install stockfish` (macOS) or equivalent. Set `llm_chess.stockfish_path` (default: `/opt/homebrew/bin/stockfish`).
+   - **Maia 3** (human-like, Elo-calibrated anchor — used by `CHESS_ENGINE_MAIA`): a rating-conditioned neural engine from [CSSLab/maia3](https://github.com/CSSLab/maia3). Unlike Dragon/Stockfish it plays *human-like* moves at a target Elo, which makes it a natural fixed anchor for rating LLMs (see the [Maia anchor sweep](#maia-anchor-sweep-elo)). It runs as a **UCI subprocess**, so it can live in its own Python environment — it pulls in PyTorch and does **not** need to be installed into the `llm_chess` (uv) environment.
+     1. **Install** the package (depends on PyTorch, so use an environment with a compatible Python, 3.10–3.12):
+        ```
+        git clone https://github.com/CSSLab/maia3.git
+        cd maia3
+        python -m pip install .          # or: python -m pip install -e .
+        ```
+        This creates the UCI entry-point commands `maia3-79m`, `maia3-23m`, `maia3-5m`, `maia3-uci`, and `maia3-cache`. Weights **auto-download from Hugging Face** (`UofTCSSLab/Maia3-79M`) on first run and cache under `~/.cache/huggingface`. Optionally pre-fetch them: `maia3-cache --model maia3-79m`.
+     2. **Verify** it launches as a UCI engine (loads the net, prints `Maia3 ready`, then waits for UCI input — `Ctrl+C` to exit):
+        ```
+        maia3-79m --elo 1000 --use-uci-history
+        ```
+        A GPU is used automatically when available; for CPU-only add `--device cpu --no-use-amp`.
+     3. **Point the harness at it**: the default `llm_chess.maia_path` is `maia3-79m`, resolved via your `PATH` — so a fresh clone works out of the box when `maia3` is installed in the same environment that runs the harness (or is otherwise on `PATH`). If Maia lives in a *separate* environment, set `llm_chess.maia_path` to its absolute path instead (find it with `which maia3-79m`). Strength is set per run via `llm_chess.maia_elo` (Maia's "level" *is* its Elo); history is passed through `--use-uci-history`, so leave `reset_maia_history = False`.
 
 ## Running Games
 
@@ -65,6 +79,15 @@ uv run python run_multiple_games.py
   - `STORE_INDIVIDUAL_LOGS`: Set to `False` for aggregate JSON only.
 - Aggregates results in `aggregate_results.json` and individual logs in `{timestamp}.json`.
 
+### Maia anchor sweep (Elo)
+Play the Black-side LLM against the **Maia 3 anchor ladder** and estimate a single anchored Elo. Requires Maia set up (Installation §5) with `llm_chess.maia_path` pointing at `maia3-79m`.
+```
+uv run python run_maia_anchors.py --reps 50      # vs Maia Elo 600/800/1000/1200/1400
+uv run python data/maia_elo.py                   # fit Elo, write data/maia_elo.csv
+```
+- The LLM under test is whatever `.env` resolves on the Black side; re-run per model to compare several.
+- Per-anchor runs land in `_logs/engine_vs_llm/maia-elo-<N>/<llm>/...`. `data/maia_elo.py` fits Elo with the same method as Dragon (Bradley-Terry MLE + 95% CI, +35 white-advantage) using each Maia Elo directly as the anchor, and prints per-anchor scores so you can see which rungs sit in the informative 35–65% band.
+
 ## Game Rules
 
 - **Players**: Random (white) vs. LLM (black) by default. Supports LLM vs. LLM, engine vs. LLM.
@@ -86,7 +109,8 @@ Edit globals in `llm_chess.py` or pass via `run_multiple_games.py`:
 - Use `azure` for classic Azure chat-completions deployments.
 - Use `azure_responses` for Azure deployments that require the Responses API. Keep `AZURE_OPENAI_ENDPOINT_*` at the resource root such as `https://your-resource.openai.azure.com`; the runtime will normalize it to the Responses base path automatically.
 
-- `white_player_type` / `black_player_type`: `RANDOM_PLAYER`, `LLM`, `CHESS_ENGINE_DRAGON`, `CHESS_ENGINE_STOCKFISH`.
+- `white_player_type` / `black_player_type`: `RANDOM_PLAYER`, `LLM`, `CHESS_ENGINE_DRAGON`, `CHESS_ENGINE_STOCKFISH`, `CHESS_ENGINE_MAIA`.
+- Maia options: `maia_path` (path to the `maia3-79m` command), `maia_elo` (target strength / Elo anchor), `maia_time_per_move`, `maia_use_uci_history`, `reset_maia_history`.
 - `enable_reflection`: Enable "reflect" action for strategic thinking (extra tokens).
 - `use_fen_board`: Use FEN notation instead of Unicode board (default: False).
 - `max_game_moves`: Max moves (default: 200).
@@ -117,6 +141,7 @@ Edit globals in `llm_chess.py` or pass via `run_multiple_games.py`:
       - If `65% <= S < 80%`, move up 1 level. If `80% <= S < 90%`, move up 2 levels. If `S >= 90%`, move up 3 levels.
       - If the model is at `100%` wins on its strongest tested level, treat the current Elo as under-resolved and keep raising Dragon until the strongest-level score drops back near `35%` to `65%`.
   - **Stockfish**: Strong engine; install separately.
+  - **Maia 3**: Human-like, rating-conditioned engine ([CSSLab/maia3](https://github.com/CSSLab/maia3)); its target Elo *is* its strength (no level→Elo formula). Runs as a UCI subprocess via `maia3-79m --elo <N> --use-uci-history`. Setup in Installation §5; anchored-Elo workflow in [Maia anchor sweep](#maia-anchor-sweep-elo). The same informative-band (35–65%) guidance as Dragon applies when choosing anchors.
 
 ## Processing Logs
 
@@ -129,6 +154,12 @@ Logs in `_logs/` contain JSON per game. Aggregate and refine:
    - Computes Elo (anchored to Dragon levels: Elo ≈ 125 × (level + 1)), Win/Loss %, Game Duration %.
    - Filters low-sample models; supports overrides/aliases.
    - Output: CSV with player stats, usage (tokens/cost), interruptions.
+
+For games against the **Maia 3** anchor ladder, compute Elo with the dedicated estimator instead (it uses each Maia Elo directly as the anchor):
+   ```
+   uv run python data/maia_elo.py
+   ```
+   - Scans `_logs/engine_vs_llm/maia-elo-<N>/...`, fits one Elo per LLM (Bradley-Terry MLE + 95% CI), writes `data/maia_elo.csv`.
 
 
 

@@ -9,6 +9,7 @@ from custom_agents import (
     AutoReplyAgent,
     ChessEngineStockfishAgent,
     ChessEngineDragonAgent,
+    ChessEngineMaiaAgent,
     NonGameAgent,
     build_termination_predicate,
 )
@@ -31,6 +32,7 @@ class PlayerType(Enum):
     CHESS_ENGINE_STOCKFISH = 5
     CHESS_ENGINE_DRAGON = 6  # Add this new entry for Dragon engine
     LLM_NON = 7  # Represents a mixture of agents player using multiple LLMs
+    CHESS_ENGINE_MAIA = 8  # Maia 3 human-like, Elo-calibrated anchor opponent
 
 
 white_player_type = PlayerType.RANDOM_PLAYER
@@ -101,6 +103,17 @@ dragon_path = "./dragon/dragon-osx"  # Path to Komodo Dragon executable
 reset_dragon_history = True  # If True, Dragon will get no history before making a move
 dragon_level = 1  # Skill level (1-25) for Komodo Dragon
 dragon_time_per_move = 0.1  # Time limit (in seconds) for Dragon to think per move
+
+# Maia 3 human-like chess engine configuration (Elo-calibrated anchor opponent).
+# Launched as a UCI subprocess: `maia_path --elo <maia_elo> [--use-uci-history]`.
+# Maia's "level" is its Elo directly, so maia_elo doubles as the rating anchor used
+# by data/maia_elo.py. History is kept (reset_maia_history=False) because the
+# --use-uci-history flag expects the move history.
+maia_path = "maia3-79m"  # maia3 UCI entry point; resolved via PATH (or set an absolute path)
+maia_elo = 1000  # Target playing strength passed to Maia via --elo (also the anchor Elo)
+maia_time_per_move = 0.2  # Time limit (in seconds) for Maia to think per move
+maia_use_uci_history = True  # Pass --use-uci-history so Maia conditions on move history
+reset_maia_history = False  # If True, drop move history (reconstruct board from FEN)
 
 ## Actions
 
@@ -365,6 +378,17 @@ def run(
             level=dragon_level,
             time_limit=dragon_time_per_move,
         ),
+        PlayerType.CHESS_ENGINE_MAIA: ChessEngineMaiaAgent(
+            name="Chess_Engine_Maia_White",
+            board=board,
+            make_move_action=make_move_action,
+            maia_path=maia_path,
+            elo=maia_elo,
+            use_uci_history=maia_use_uci_history,
+            remove_history=reset_maia_history,
+            is_termination_msg=is_termination_message,
+            time_limit=maia_time_per_move,
+        ),
         PlayerType.LLM_NON: NonGameAgent(
             name="Player_Non_White",
             system_message="",
@@ -402,6 +426,17 @@ def run(
             is_termination_msg=is_termination_message,
             level=dragon_level,
             time_limit=dragon_time_per_move,
+        ),
+        PlayerType.CHESS_ENGINE_MAIA: ChessEngineMaiaAgent(
+            name="Chess_Engine_Maia_Black",
+            board=board,
+            make_move_action=make_move_action,
+            maia_path=maia_path,
+            elo=maia_elo,
+            use_uci_history=maia_use_uci_history,
+            remove_history=reset_maia_history,
+            is_termination_msg=is_termination_message,
+            time_limit=maia_time_per_move,
         ),
         PlayerType.LLM_NON: NonGameAgent(
             name="Player_Non_Black",

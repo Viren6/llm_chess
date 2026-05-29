@@ -103,6 +103,9 @@ def run_games():
         llm_chess.dragon_level = ENGINE_LEVEL
     elif WHITE_PLAYER_TYPE == llm_chess.PlayerType.CHESS_ENGINE_STOCKFISH:
         llm_chess.stockfish_level = ENGINE_LEVEL
+    elif WHITE_PLAYER_TYPE == llm_chess.PlayerType.CHESS_ENGINE_MAIA:
+        # For Maia, ENGINE_LEVEL is the target Elo (also the rating anchor).
+        llm_chess.maia_elo = ENGINE_LEVEL
 
     # Determine LOG_FOLDER lazily to respect external overrides in tests
     global LOG_FOLDER
@@ -114,6 +117,7 @@ def run_games():
             llm_config_black=LLM_CONFIG_BLACK,
             stockfish_level=llm_chess.stockfish_level,
             dragon_level=llm_chess.dragon_level,
+            maia_elo=llm_chess.maia_elo,
         )
 
     # NoN (Network-of-Networks, aka MoA, aka Mixture-of-Agents) setup:
@@ -320,6 +324,7 @@ def _engine_id_and_level(
     player_type: llm_chess.PlayerType,
     stockfish_level_override: Optional[int] = None,
     dragon_level_override: Optional[int] = None,
+    maia_elo_override: Optional[int] = None,
 ) -> Optional[Tuple[str, int]]:
     if player_type == llm_chess.PlayerType.CHESS_ENGINE_STOCKFISH:
         level = (
@@ -335,7 +340,23 @@ def _engine_id_and_level(
             else llm_chess.dragon_level
         )
         return ("dragon", int(level))
+    if player_type == llm_chess.PlayerType.CHESS_ENGINE_MAIA:
+        # Maia's "level" is its Elo; we keep the (id, number) shape and render the
+        # folder segment as "maia-elo-<N>" (see _engine_segment).
+        elo = (
+            maia_elo_override
+            if maia_elo_override is not None
+            else llm_chess.maia_elo
+        )
+        return ("maia", int(elo))
     return None
+
+
+def _engine_segment(engine: Tuple[str, int]) -> str:
+    """Folder segment for an engine opponent. Maia is keyed by Elo, others by level."""
+    engine_id, number = engine
+    unit = "elo" if engine_id == "maia" else "lvl"
+    return f"{engine_id}-{unit}-{number}"
 
 
 def _is_llm(player_type: llm_chess.PlayerType) -> bool:
@@ -359,6 +380,7 @@ def build_log_folder(
     *,
     stockfish_level: Optional[int] = None,
     dragon_level: Optional[int] = None,
+    maia_elo: Optional[int] = None,
 ) -> str:
     """Compute the log folder path per project rules.
 
@@ -372,10 +394,10 @@ def build_log_folder(
     ts = _now_timestamp()
 
     white_engine = _engine_id_and_level(
-        white_player_type, stockfish_level, dragon_level
+        white_player_type, stockfish_level, dragon_level, maia_elo
     )
     black_engine = _engine_id_and_level(
-        black_player_type, stockfish_level, dragon_level
+        black_player_type, stockfish_level, dragon_level, maia_elo
     )
 
     white_is_llm = _is_llm(white_player_type)
@@ -391,16 +413,14 @@ def build_log_folder(
 
     # 2) engine_vs_llm (color agnostic, engine segment first)
     if (white_engine and black_is_llm) or (black_engine and white_is_llm):
-        engine_id, level = white_engine if white_engine else black_engine  # type: ignore
+        engine = white_engine if white_engine else black_engine  # type: ignore
         llm_cfg = llm_config_black if black_is_llm else llm_config_white
         llm_name = _extract_llm_model_and_suffix(llm_cfg)
-        return f"_logs/engine_vs_llm/{engine_id}-lvl-{level}/{llm_name}/{ts}"
+        return f"_logs/engine_vs_llm/{_engine_segment(engine)}/{llm_name}/{ts}"
 
     # 3) engine_vs_engine (ordered by color: white first, then black)
     if white_engine and black_engine:
-        w_id, w_lvl = white_engine
-        b_id, b_lvl = black_engine
-        return f"_logs/engine_vs_engine/{w_id}-lvl-{w_lvl}_vs_{b_id}-lvl-{b_lvl}/{ts}"
+        return f"_logs/engine_vs_engine/{_engine_segment(white_engine)}_vs_{_engine_segment(black_engine)}/{ts}"
 
     # 4) llm_vs_llm (ordered by color)
     if white_is_llm and black_is_llm:
