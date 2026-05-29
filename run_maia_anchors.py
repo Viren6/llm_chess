@@ -170,6 +170,13 @@ def main():
     ap.add_argument("--quant", default=None,
                     help="force provider precision, e.g. 'bf16' (provider.quantizations=[<q>]); "
                          "allows ANY provider at that precision so load spreads across them")
+    ap.add_argument("--thinking", action=argparse.BooleanOptionalAction, default=True,
+                    help="enable the model's native thinking mode via "
+                         "chat_template_kwargs.enable_thinking (DeepInfra/vLLM); reasoning goes to "
+                         "the reasoning_content field, content stays clean (default: on)")
+    ap.add_argument("--reason", action=argparse.BooleanOptionalAction, default=False,
+                    help="prompt-based reasoning: instruct the LLM to write analysis then its move "
+                         "in one message. Fallback for models without a thinking mode (default: off)")
     args = ap.parse_args()
 
     if args.maia_path is not None:
@@ -187,6 +194,7 @@ def main():
     llm_chess.remove_text = llm_chess.DEFAULT_REMOVE_TEXT_REGEX
     llm_chess.max_api_retries = 6
     llm_chess.api_retry_delay = 2.0
+    llm_chess.require_reasoning = args.reason  # write analysis, then make_move, in one message
 
     # Per-side LLM overrides: optionally pin temperature, and/or force an OpenRouter
     # provider. provider_overrides merges into config_list[0]; AG2 forwards `extra_body`
@@ -194,9 +202,10 @@ def main():
     hp = {}
     if args.llm_temperature is not None:
         hp["hyperparams"] = {"temperature": args.llm_temperature}
-    # OpenRouter provider routing. --quant forces a precision but allows any provider at it
-    # (load spreads -> avoids single-provider rate limits); --provider pins one endpoint with
-    # no fallback. Both land in extra_body, which AG2 forwards to the OpenAI create() call.
+    # extra_body carries non-standard request fields that AG2 forwards to the OpenAI create()
+    # call: OpenRouter provider routing (--provider/--quant) and the thinking-mode toggle
+    # (chat_template_kwargs.enable_thinking, read by DeepInfra/vLLM).
+    extra_body = {}
     provider = {}
     if args.quant is not None:
         provider["quantizations"] = [args.quant]
@@ -204,7 +213,11 @@ def main():
         provider["order"] = [args.provider]
         provider["allow_fallbacks"] = False
     if provider:
-        hp["provider_overrides"] = {"extra_body": {"provider": provider}}
+        extra_body["provider"] = provider
+    if args.thinking:
+        extra_body["chat_template_kwargs"] = {"enable_thinking": True}
+    if extra_body:
+        hp["provider_overrides"] = {"extra_body": extra_body}
     cfg_w, cfg_b = get_llms(white_hyperparams=hp or None, black_hyperparams=hp or None)
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
 

@@ -38,6 +38,11 @@ class PlayerType(Enum):
 white_player_type = PlayerType.RANDOM_PLAYER
 black_player_type = PlayerType.LLM_BLACK
 enable_reflection = False  # Whether to offer the LLM time to think and evaluate moves
+# Whether to instruct the model to write step-by-step analysis and then its move in ONE
+# message. Unlike enable_reflection (a separate 'do_reflection' action), this needs no extra
+# turn and avoids the proxy matching 'do_reflection' ahead of 'make_move' and swallowing the
+# move. Reasoning must end with a single 'make_move <UCI>' line (see common_prompt).
+require_reasoning = False
 board_representation_mode = BoardRepresentation.UNICODE_ONLY  # What kind of board is printed in response to get_current_board
 rotate_board_for_white = False # Whether to rotate the Uicode board for the white player so it gets it's pieces at the bottom
 
@@ -272,6 +277,23 @@ def run(
             else ""
         )
         + f"- '{make_move_action} <UCI formatted move>' when you are ready to complete your turn (e.g., '{make_move_action} e2e4')"
+        + (
+            f"\n\nReason in depth before you move — do not be brief. First use "
+            f"'{get_current_board_action}' and '{get_legal_moves_action}' to see the position and "
+            f"your legal options. Then send ONE message with a thorough analysis:\n"
+            f"- Evaluate the position: material, king safety, pawn structure, piece activity, and "
+            f"the opponent's immediate threats.\n"
+            f"- Choose your 3-5 strongest candidate moves (in algebraic notation like Nf3, never "
+            f"as '{make_move_action}').\n"
+            f"- For EACH candidate, calculate the most forcing line several plies deep, give the "
+            f"opponent's best reply, and evaluate the resulting position.\n"
+            f"- Compare the candidates and explain which you choose and why.\n"
+            f"Take as much space as you need. Then finish the message with your committing action "
+            f"on its own final line: '{make_move_action} <UCI>'. Write '{make_move_action}' exactly "
+            f"once, as the last line, and do not write the other action names in your analysis."
+            if require_reasoning
+            else ""
+        )
     )
 
     reflect_prompt = (

@@ -86,6 +86,7 @@ uv run python run_maia_anchors.py --reps 25      # 25 games/color/anchor across 
 uv run python data/maia_elo.py                   # fit color-balanced Elo, write data/maia_elo.csv
 ```
 - `--reps N` plays N games as White and N as Black per anchor; the default plays both colors so White's first-move advantage is **balanced out, not corrected for**.
+- The LLM writes its step-by-step analysis and then its move in a single message by default; the analysis is captured in each folder's `output.txt`. It deliberately does **not** use the `do_reflection` action — the proxy matches `do_reflection` ahead of `make_move`, so a combined "reflect + move" reply would swallow the move and stall the game. Disable the reasoning instruction with `--no-reason`.
 - Per-anchor runs land in `_logs/engine_vs_llm/maia-elo-<N>/<llm>/<ts>_<color>/` (re-running accumulates). Each folder holds `output.txt` (the full console transcript — every model turn, ANSI-stripped), the per-game stats/PGN JSON, and `_aggregate_results.json`. `data/maia_elo.py` fits Elo with the same MLE as Dragon (Bradley-Terry + 95% CI) using each Maia Elo directly as the anchor, but with **colors forced balanced**: each anchor's score is the equal-weight mean of the White-side and Black-side scores (no white-advantage term), and any single-color anchor is skipped. Per-anchor scores are printed so you can see which rungs sit in the informative 35–65% band.
 
 ## Game Rules
