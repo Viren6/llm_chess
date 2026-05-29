@@ -25,9 +25,11 @@ Usage:
 """
 
 import argparse
+import contextlib
 import json
 import os
 import re
+import sys
 import time
 
 import llm_chess
@@ -37,6 +39,49 @@ MAIA_ELOS = [600, 800, 1000, 1200, 1400]
 REPS_PER_COLOR = 1  # games per color per anchor (default => 2 games/anchor)
 
 MAIA = llm_chess.PlayerType.CHESS_ENGINE_MAIA
+
+_ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+class _Tee:
+    """Forward writes to the real console and to a file (ANSI codes stripped)."""
+
+    def __init__(self, console, logfile):
+        self._console = console
+        self._logfile = logfile
+
+    def write(self, data):
+        self._console.write(data)
+        self._logfile.write(_ANSI_RE.sub("", data))
+        return len(data)
+
+    def flush(self):
+        self._console.flush()
+        self._logfile.flush()
+
+    def __getattr__(self, name):  # delegate isatty/encoding/fileno/... to the console
+        return getattr(self._console, name)
+
+
+@contextlib.contextmanager
+def _console_to_file(log_folder, filename="output.txt"):
+    """Tee stdout+stderr into <log_folder>/output.txt for the duration, then restore.
+
+    Deliberately NOT run_multiple_games.setup_console_logging: that swaps sys.stdout
+    without a teardown, so calling it once per batch would nest the wrappers and leak
+    each game's output into every earlier file. This restores the originals and closes
+    the file every time, so each batch gets its own clean output.txt.
+    """
+    os.makedirs(log_folder, exist_ok=True)
+    f = open(os.path.join(log_folder, filename), "w", encoding="utf-8")
+    orig_out, orig_err = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = _Tee(orig_out, f), _Tee(orig_err, f)
+    try:
+        yield
+    finally:
+        sys.stdout, sys.stderr = orig_out, orig_err
+        f.flush()
+        f.close()
 
 
 def _model_of(player) -> str:
@@ -65,31 +110,34 @@ def _run_batch(elo, llm_color, reps, cfg_w, cfg_b, model_slug):
     ts = time.strftime("%Y-%m-%d-%H-%M-%S")
     log_folder = os.path.join("_logs", "engine_vs_llm", f"maia-elo-{elo}",
                               model_slug, f"{ts}_{llm_color}")
-    os.makedirs(log_folder, exist_ok=True)
 
     agg = {"total_games": 0, "white_wins": 0, "black_wins": 0, "draws": 0}
     pw_info = pb_info = {"name": "", "model": ""}
-    for _ in range(reps):
-        stats, pw, pb = llm_chess.run(
-            log_dir=log_folder,
-            llm_config_white=cfg_w,
-            llm_config_black=cfg_b,
-        )
-        winner = stats.get("winner")
-        if winner == pw.name:
-            agg["white_wins"] += 1
-        elif winner == pb.name:
-            agg["black_wins"] += 1
-        else:
-            agg["draws"] += 1
-        agg["total_games"] += 1
-        pw_info = {"name": pw.name, "model": _model_of(pw)}
-        pb_info = {"name": pb.name, "model": _model_of(pb)}
+    # Tee this batch's full console (every model turn) into <log_folder>/output.txt.
+    with _console_to_file(log_folder):
+        for _ in range(reps):
+            stats, pw, pb = llm_chess.run(
+                log_dir=log_folder,
+                llm_config_white=cfg_w,
+                llm_config_black=cfg_b,
+            )
+            winner = stats.get("winner")
+            if winner == pw.name:
+                agg["white_wins"] += 1
+            elif winner == pb.name:
+                agg["black_wins"] += 1
+            else:
+                agg["draws"] += 1
+            agg["total_games"] += 1
+            pw_info = {"name": pw.name, "model": _model_of(pw)}
+            pb_info = {"name": pb.name, "model": _model_of(pb)}
 
-    agg["player_white"] = pw_info
-    agg["player_black"] = pb_info
-    with open(os.path.join(log_folder, "_aggregate_results.json"), "w", encoding="utf-8") as f:
-        json.dump(agg, f, indent=2)
+        agg["player_white"] = pw_info
+        agg["player_black"] = pb_info
+        with open(os.path.join(log_folder, "_aggregate_results.json"), "w", encoding="utf-8") as f:
+            json.dump(agg, f, indent=2)
+
+    # Printed after stdout is restored, so the summary goes to the real console.
     print(f"  -> {log_folder}: white_wins={agg['white_wins']} "
           f"black_wins={agg['black_wins']} draws={agg['draws']}")
 
