@@ -150,22 +150,41 @@ def main():
                     help="Maia Elo anchors to sweep")
     ap.add_argument("--colors", choices=["both", "white", "black"], default="both",
                     help="LLM color(s); 'both' (default) balances White's advantage")
-    ap.add_argument("--maia-path", default=None, help="override llm_chess.maia_path")
+    ap.add_argument("--maia-path", default=None,
+                    help="override llm_chess.maia_path (the maia3-uci launcher)")
+    ap.add_argument("--maia-model", default=None,
+                    help="Maia model alias/HF repo via --model (default: llm_chess.maia_model = maia3-79m)")
     ap.add_argument("--maia-time", type=float, default=None,
                     help="override llm_chess.maia_time_per_move (s)")
+    ap.add_argument("--maia-temperature", type=float, default=None,
+                    help="Maia move-sampling temp; >0 = diverse human-like games, "
+                         "0 = deterministic argmax (default: llm_chess.maia_temperature = 1.0)")
+    ap.add_argument("--maia-top-p", type=float, default=None,
+                    help="Maia nucleus-sampling threshold (1.0 = disabled)")
+    ap.add_argument("--llm-temperature", type=float, default=None,
+                    help="pin the LLM sampling temperature (default: provider default, ~1.0)")
     args = ap.parse_args()
 
     if args.maia_path is not None:
         llm_chess.maia_path = args.maia_path
+    if args.maia_model is not None:
+        llm_chess.maia_model = args.maia_model
     if args.maia_time is not None:
         llm_chess.maia_time_per_move = args.maia_time
+    if args.maia_temperature is not None:
+        llm_chess.maia_temperature = args.maia_temperature
+    if args.maia_top_p is not None:
+        llm_chess.maia_top_p = args.maia_top_p
 
     # Helpful defaults for API opponents: strip <think> blocks; tolerate rate limits.
     llm_chess.remove_text = llm_chess.DEFAULT_REMOVE_TEXT_REGEX
     llm_chess.max_api_retries = 6
     llm_chess.api_retry_delay = 2.0
 
-    cfg_w, cfg_b = get_llms()  # reads .env (_W and _B); both sides must be your model
+    # Pin the LLM temperature if requested; otherwise the provider default (~1.0) applies.
+    hp = ({"hyperparams": {"temperature": args.llm_temperature}}
+          if args.llm_temperature is not None else None)
+    cfg_w, cfg_b = get_llms(white_hyperparams=hp, black_hyperparams=hp)  # reads .env (_W and _B)
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
 
     colors = ["white", "black"] if args.colors == "both" else [args.colors]

@@ -562,9 +562,12 @@ class ChessEngineMaiaAgent(GameAgent):
         make_move_action: str,
         elo: int = 1000,
         time_limit: float = 0.2,
-        maia_path: str = "maia3-79m",
+        maia_path: str = "maia3-uci",
+        maia_model: str = "maia3-79m",
         use_uci_history: bool = True,
         remove_history: bool = False,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
         *args,
         **kwargs,
     ):
@@ -574,15 +577,29 @@ class ChessEngineMaiaAgent(GameAgent):
         self.elo = elo
         self.time_limit = time_limit
         self.maia_path = maia_path
+        self.maia_model = maia_model
         self.use_uci_history = use_uci_history
         self.remove_history = remove_history
+        # We invoke the generic `maia3-uci` launcher with an explicit --model so behaviour
+        # matches maia3-uci's documented defaults, not a preset. (The preset binaries like
+        # `maia3-79m` hardcode --temperature 0 => argmax => deterministic => identical games;
+        # maia3-uci defaults temperature to 1.0, sampling the human-move policy.) We still
+        # pass --temperature/--top-p explicitly so the harness controls sampling regardless
+        # of which launcher maia_path points at — a preset binary ignores --model and our
+        # later --temperature overrides its forced 0. temperature=0 => deterministic.
+        self.temperature = temperature
+        self.top_p = top_p
         self._engine: Optional[chess.engine.SimpleEngine] = None
 
     def _get_engine(self) -> chess.engine.SimpleEngine:
         if self._engine is None:
-            cmd = [self.maia_path, "--elo", str(self.elo)]
+            cmd = [self.maia_path, "--model", self.maia_model, "--elo", str(self.elo)]
             if self.use_uci_history:
                 cmd.append("--use-uci-history")
+            if self.temperature is not None:
+                cmd += ["--temperature", str(self.temperature)]
+            if self.top_p is not None:
+                cmd += ["--top-p", str(self.top_p)]
             self._engine = chess.engine.SimpleEngine.popen_uci(cmd)
         return self._engine
 

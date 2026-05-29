@@ -105,15 +105,22 @@ dragon_level = 1  # Skill level (1-25) for Komodo Dragon
 dragon_time_per_move = 0.1  # Time limit (in seconds) for Dragon to think per move
 
 # Maia 3 human-like chess engine configuration (Elo-calibrated anchor opponent).
-# Launched as a UCI subprocess: `maia_path --elo <maia_elo> [--use-uci-history]`.
-# Maia's "level" is its Elo directly, so maia_elo doubles as the rating anchor used
-# by data/maia_elo.py. History is kept (reset_maia_history=False) because the
-# --use-uci-history flag expects the move history.
-maia_path = "maia3-79m"  # maia3 UCI entry point; resolved via PATH (or set an absolute path)
+# Launched as a UCI subprocess: `maia_path --model <maia_model> --elo <maia_elo> [...]`.
+# We use the generic `maia3-uci` launcher (not a preset binary like maia3-79m) so behaviour
+# matches maia3-uci's documented defaults. Maia's "level" is its Elo directly, so maia_elo
+# doubles as the rating anchor used by data/maia_elo.py. History is kept
+# (reset_maia_history=False) because the --use-uci-history flag expects the move history.
+maia_path = "maia3-uci"  # generic Maia UCI launcher; resolved via PATH (or set an absolute path)
+maia_model = "maia3-79m"  # model alias / HF repo passed via --model
 maia_elo = 1000  # Target playing strength passed to Maia via --elo (also the anchor Elo)
 maia_time_per_move = 0.2  # Time limit (in seconds) for Maia to think per move
 maia_use_uci_history = True  # Pass --use-uci-history so Maia conditions on move history
 reset_maia_history = False  # If True, drop move history (reconstruct board from FEN)
+# Maia move-policy sampling, passed to maia3-uci via --temperature/--top-p. maia3-uci
+# defaults temperature to 1.0 (samples the human-move distribution at the target Elo =>
+# diverse, human-like games); 0 = argmax/deterministic (identical games).
+maia_temperature = 1.0  # 1.0 = full human-policy sampling (maia3-uci default); 0 = argmax
+maia_top_p = 1.0  # Nucleus sampling threshold for Maia (1.0 = disabled)
 
 ## Actions
 
@@ -383,9 +390,12 @@ def run(
             board=board,
             make_move_action=make_move_action,
             maia_path=maia_path,
+            maia_model=maia_model,
             elo=maia_elo,
             use_uci_history=maia_use_uci_history,
             remove_history=reset_maia_history,
+            temperature=maia_temperature,
+            top_p=maia_top_p,
             is_termination_msg=is_termination_message,
             time_limit=maia_time_per_move,
         ),
@@ -432,9 +442,12 @@ def run(
             board=board,
             make_move_action=make_move_action,
             maia_path=maia_path,
+            maia_model=maia_model,
             elo=maia_elo,
             use_uci_history=maia_use_uci_history,
             remove_history=reset_maia_history,
+            temperature=maia_temperature,
+            top_p=maia_top_p,
             is_termination_msg=is_termination_message,
             time_limit=maia_time_per_move,
         ),
