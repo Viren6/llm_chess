@@ -164,8 +164,12 @@ def main():
     ap.add_argument("--llm-temperature", type=float, default=None,
                     help="pin the LLM sampling temperature (default: provider default, ~1.0)")
     ap.add_argument("--provider", default=None,
-                    help="force a single OpenRouter provider endpoint, e.g. 'venice/bf16' "
-                         "(sets provider.order=[<slug>], allow_fallbacks=false)")
+                    help="pin a single OpenRouter provider endpoint, e.g. 'venice/bf16' "
+                         "(provider.order=[<slug>], allow_fallbacks=false — prone to that "
+                         "provider's rate limits)")
+    ap.add_argument("--quant", default=None,
+                    help="force provider precision, e.g. 'bf16' (provider.quantizations=[<q>]); "
+                         "allows ANY provider at that precision so load spreads across them")
     args = ap.parse_args()
 
     if args.maia_path is not None:
@@ -190,10 +194,17 @@ def main():
     hp = {}
     if args.llm_temperature is not None:
         hp["hyperparams"] = {"temperature": args.llm_temperature}
+    # OpenRouter provider routing. --quant forces a precision but allows any provider at it
+    # (load spreads -> avoids single-provider rate limits); --provider pins one endpoint with
+    # no fallback. Both land in extra_body, which AG2 forwards to the OpenAI create() call.
+    provider = {}
+    if args.quant is not None:
+        provider["quantizations"] = [args.quant]
     if args.provider is not None:
-        hp["provider_overrides"] = {
-            "extra_body": {"provider": {"order": [args.provider], "allow_fallbacks": False}}
-        }
+        provider["order"] = [args.provider]
+        provider["allow_fallbacks"] = False
+    if provider:
+        hp["provider_overrides"] = {"extra_body": {"provider": provider}}
     cfg_w, cfg_b = get_llms(white_hyperparams=hp or None, black_hyperparams=hp or None)
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
 
