@@ -190,6 +190,90 @@ def _stop_servers(servers):
             pass
 
 
+# --------------------------------------------------------------------------- worker dispatch
+def _run_child(args, elo, color, socket_path, folder):
+    """In a forked child: redirect this game's output to its own output.txt and play one game.
+    Uses os._exit so the child never runs the parent's atexit/finally (which would tear down
+    the shared Maia servers)."""
+    import copy
+    import traceback
+    fd = os.open(os.path.join(folder, "output.txt"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    os.dup2(fd, 1)
+    os.dup2(fd, 2)
+    os.close(fd)
+    # Fresh line-buffered wrappers on the redirected fds so print() in the game lands in the file.
+    sys.stdout = os.fdopen(1, "w", buffering=1, encoding="utf-8")
+    sys.stderr = os.fdopen(2, "w", buffering=1, encoding="utf-8")
+    ca = copy.copy(args)
+    ca.elo, ca.color, ca.socket, ca.out = elo, color, socket_path, folder
+    try:
+        _worker(ca)
+        sys.stdout.flush()
+        os._exit(0)
+    except BaseException:
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)
+
+
+def _run_forked(args, jobs, servers, folder_for):
+    """Fork one child per game from this already-imported parent. The ~300MB+ of autogen/
+    llm_chess module pages are shared copy-on-write, so the cgroup (which counts each physical
+    page once) sees total RAM stay ~flat as concurrency grows — unlike spawning a fresh
+    interpreter per game (~350MB EACH). This is what lets high --concurrency (e.g. 200) fit a
+    memory-capped pod. Forks happen from the single-threaded main loop (fork + threads is unsafe)."""
+    import gc
+    gc.collect()
+    try:
+        gc.freeze()  # move the shared heap into the permanent gen so GC won't dirty its CoW pages
+    except Exception:
+        pass
+
+    total = len(jobs)
+    job_iter = iter(jobs)
+    running = {}  # pid -> (elo, color, folder)
+    done = 0
+    exhausted = False
+    try:
+        while not exhausted or running:
+            while len(running) < args.concurrency and not exhausted:
+                try:
+                    elo, color, jidx = next(job_iter)
+                except StopIteration:
+                    exhausted = True
+                    break
+                folder = folder_for(elo, color, jidx)
+                sys.stdout.flush()
+                sys.stderr.flush()
+                pid = os.fork()
+                if pid == 0:
+                    _run_child(args, elo, color, servers[elo][0], folder)
+                    os._exit(0)  # unreachable: _run_child always exits
+                running[pid] = (elo, color, folder)
+            if not running:
+                break
+            pid, status = os.waitpid(-1, 0)
+            if pid not in running:
+                continue
+            elo, color, folder = running.pop(pid)
+            rc = os.waitstatus_to_exitcode(status)
+            done += 1
+            tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
+            print(f"[{done}/{total}] maia-elo-{elo} {color} {tag}", flush=True)
+    finally:
+        for pid in list(running):  # on error/interrupt, don't leave orphaned games
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+        for pid in list(running):
+            try:
+                os.waitpid(pid, 0)
+            except OSError:
+                pass
+
+
 # --------------------------------------------------------------------------- launcher
 def _launch(args):
     colors = ["white", "black"] if args.colors == "both" else [args.colors]
@@ -204,18 +288,23 @@ def _launch(args):
     # AND across re-runs (different PID) — the per-game JSON is only minute-resolution, so each
     # game must get its own folder to avoid clobbering.
     ts = time.strftime("%Y-%m-%d-%H-%M-%S") + f"-p{os.getpid()}"
+    mode = "spawn" if args.spawn else "fork"
     print(f"[plan] {len(jobs)} games "
           f"({len(args.elos)} anchors x {len(colors)} colors x {args.reps} reps), "
-          f"concurrency={args.concurrency}, model={model_slug}", flush=True)
+          f"concurrency={args.concurrency}, mode={mode}, model={model_slug}", flush=True)
 
     servers = _start_servers(args.elos, args)
     self_path = os.path.abspath(__file__)
 
-    def run_one(job):
-        elo, color, idx = job
+    def folder_for(elo, color, idx):
         folder = os.path.join(args.logs_root, "engine_vs_llm", f"maia-elo-{elo}",
                               model_slug, f"{ts}_{color}_j{idx}")
         os.makedirs(folder, exist_ok=True)
+        return folder
+
+    def run_one_spawn(job):
+        elo, color, idx = job
+        folder = folder_for(elo, color, idx)
         cmd = [sys.executable, self_path, "--worker",
                "--elo", str(elo), "--color", color, "--socket", servers[elo][0],
                "--out", folder]
@@ -230,15 +319,18 @@ def _launch(args):
             rc = subprocess.run(cmd, stdout=out, stderr=subprocess.STDOUT).returncode
         return elo, color, folder, rc
 
-    done = 0
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
-            futures = [ex.submit(run_one, j) for j in jobs]
-            for fut in concurrent.futures.as_completed(futures):
-                elo, color, folder, rc = fut.result()
-                done += 1
-                tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
-                print(f"[{done}/{len(jobs)}] maia-elo-{elo} {color} {tag}", flush=True)
+        if args.spawn:
+            done = 0
+            with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
+                futures = [ex.submit(run_one_spawn, j) for j in jobs]
+                for fut in concurrent.futures.as_completed(futures):
+                    elo, color, folder, rc = fut.result()
+                    done += 1
+                    tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
+                    print(f"[{done}/{len(jobs)}] maia-elo-{elo} {color} {tag}", flush=True)
+        else:
+            _run_forked(args, jobs, servers, folder_for)
     finally:
         _stop_servers(servers)
     print("=== all games complete ===  now run: python data/maia_elo.py", flush=True)
@@ -258,6 +350,10 @@ def main():
     ap.add_argument("--colors", choices=["both", "white", "black"], default="both")
     ap.add_argument("--concurrency", type=int, default=100,
                     help="max concurrent game workers (~= concurrent API requests)")
+    ap.add_argument("--spawn", action="store_true",
+                    help="spawn a fresh interpreter per game (~350MB RAM EACH) instead of the "
+                         "default fork model (shared copy-on-write heap, ~flat RAM). Use only if "
+                         "fork misbehaves; fork is what makes high --concurrency fit a RAM cap.")
     ap.add_argument("--logs-root", default="_logs")
     ap.add_argument("--server-ready-timeout", type=float, default=120)
     ap.add_argument("--maia-path", default="/workspace/llm-venv/bin/maia3-uci")
