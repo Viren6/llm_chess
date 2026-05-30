@@ -1,3 +1,4 @@
+import atexit
 import copy
 import random
 import time  # Add this import
@@ -7,6 +8,22 @@ import chess.engine
 
 from autogen import ConversableAgent
 from typing import Any, Dict, List, Optional, Union, Callable
+
+
+# python-chess runs each engine on a background event loop; if an engine subprocess is not
+# explicitly quit(), it keeps the process alive after main() returns (the run "hangs"). Track
+# open Maia engines and quit them at interpreter exit so processes always terminate cleanly.
+_OPEN_MAIA_ENGINES: set = set()
+
+
+@atexit.register
+def _quit_open_maia_engines():
+    for eng in list(_OPEN_MAIA_ENGINES):
+        try:
+            eng.quit()
+        except Exception:
+            pass
+    _OPEN_MAIA_ENGINES.clear()
 
 
 def is_retryable_error(exception) -> bool:
@@ -606,10 +623,12 @@ class ChessEngineMaiaAgent(GameAgent):
             if self.top_p is not None:
                 cmd += ["--top-p", str(self.top_p)]
             self._engine = chess.engine.SimpleEngine.popen_uci(cmd)
+            _OPEN_MAIA_ENGINES.add(self._engine)  # ensure it gets quit at exit
         return self._engine
 
     def close(self) -> None:
         if self._engine is not None:
+            _OPEN_MAIA_ENGINES.discard(self._engine)
             try:
                 self._engine.quit()
             except Exception:
