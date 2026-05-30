@@ -82,6 +82,47 @@ class GameAgent(ConversableAgent):
         # Retry configuration
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        # Native "thinking" output (e.g. DeepInfra/gemma `reasoning_content`) for the most
+        # recent LLM call. autogen's message_retrieval keeps only the content string, so we
+        # grab it off the raw response by wrapping the client below and surface it in the
+        # transcript via _emit_reasoning().
+        self._last_reasoning = None
+        self._install_reasoning_capture()
+
+    def _install_reasoning_capture(self):
+        """Wrap self.client.create to stash any reasoning_content from each response.
+        No-op for agents without an LLM client (proxy/engine/random players)."""
+        client = getattr(self, "client", None)
+        if client is None or getattr(client, "_reasoning_wrapped", False):
+            return
+        orig_create = client.create
+
+        def create(*args, **kwargs):
+            resp = orig_create(*args, **kwargs)
+            reasoning = None
+            try:
+                for choice in getattr(resp, "choices", None) or []:
+                    msg = getattr(choice, "message", None)
+                    r = getattr(msg, "reasoning_content", None) if msg is not None else None
+                    if r:
+                        reasoning = r
+                        break
+            except Exception:
+                reasoning = None
+            self._last_reasoning = reasoning
+            return resp
+
+        client.create = create
+        client._reasoning_wrapped = True
+
+    def _emit_reasoning(self):
+        """Print the last call's reasoning as its own transcript section (if any)."""
+        reasoning = self._last_reasoning
+        if not reasoning:
+            return
+        print(f"\n----- REASONING ({self.name}) -----")
+        print(reasoning.strip())
+        print(f"----- END REASONING ({self.name}) -----\n", flush=True)
 
     def prep_to_move(self):
         """
@@ -107,10 +148,12 @@ class GameAgent(ConversableAgent):
         for attempt in range(self.max_retries + 1):  # +1 for initial attempt
             try:
                 start_time = time.time()
+                self._last_reasoning = None  # cleared so a failed/cached turn can't reprint stale reasoning
                 reply = super().generate_reply(messages, sender, **kwargs)
                 end_time = time.time()
                 # Accumulate only the actual execution time, not the delay
                 self.accumulated_reply_time_seconds += end_time - start_time
+                self._emit_reasoning()
                 return reply
 
             except Exception as e:
