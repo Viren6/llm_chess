@@ -568,6 +568,7 @@ class ChessEngineMaiaAgent(GameAgent):
         remove_history: bool = False,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        maia_server: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -580,6 +581,10 @@ class ChessEngineMaiaAgent(GameAgent):
         self.maia_model = maia_model
         self.use_uci_history = use_uci_history
         self.remove_history = remove_history
+        # If set (Unix socket path), ask a shared maia_server.py for moves instead of
+        # spawning a local Maia subprocess — so many concurrent workers share a few GPU
+        # Maia instances. elo/temperature/top_p/path are then owned by that server.
+        self.maia_server = maia_server
         # We invoke the generic `maia3-uci` launcher with an explicit --model so behaviour
         # matches maia3-uci's documented defaults, not a preset. (The preset binaries like
         # `maia3-79m` hardcode --temperature 0 => argmax => deterministic => identical games;
@@ -622,6 +627,18 @@ class ChessEngineMaiaAgent(GameAgent):
     ) -> Union[str, Dict, None]:
         if self.should_terminate(messages):
             return None
+
+        # Remote mode: ask the shared Maia server for the move (send the move history so it
+        # can rebuild the position for --use-uci-history).
+        if self.maia_server:
+            try:
+                from maia_server import request_move
+                moves = [m.uci() for m in self.board.move_stack]
+                uci = request_move(self.maia_server, moves, timeout=self.time_limit + 60)
+                return f"{self.make_move_action} {uci}"
+            except Exception as e:
+                print(f"Error from Maia server: {e}")
+                return None
 
         try:
             engine = self._get_engine()

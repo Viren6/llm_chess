@@ -91,17 +91,25 @@ def _maia_elo_for_run(run_dir, agg):
     return None
 
 
-def _llm_side(agg):
-    """Return (llm_model, llm_is_white) if this is a Maia-opponent run, else None."""
-    white = agg.get("player_white", {})
-    black = agg.get("player_black", {})
-    white_is_maia = "maia" in str(white.get("name", "")).lower()
-    black_is_maia = "maia" in str(black.get("name", "")).lower()
-    if white_is_maia == black_is_maia:
+def _llm_is_white(agg):
+    """True if the LLM is White (Maia Black), False if LLM Black, None if not a Maia-vs-LLM run.
+
+    Detected from player names (the engine is always 'Chess_Engine_Maia_*'), which is reliable
+    even when the LLM model field is missing from the aggregate.
+    """
+    w = "maia" in str(agg.get("player_white", {}).get("name", "")).lower()
+    b = "maia" in str(agg.get("player_black", {}).get("name", "")).lower()
+    if w == b:
         return None  # both or neither are Maia -> not a clean Maia-vs-LLM run
-    if white_is_maia:
-        return (black.get("model") or black.get("name", "unknown")), False  # LLM Black
-    return (white.get("model") or white.get("name", "unknown")), True       # LLM White
+    return not w     # LLM is White iff White is NOT Maia
+
+
+def _model_key(dirpath):
+    """The model is the folder segment between maia-elo-<N> and the per-game run folder, e.g.
+    _logs/engine_vs_llm/maia-elo-1000/<MODEL-SLUG>/<run>/. Using the slug (not the aggregate's
+    model field) groups White and Black games of the same model together and is stable across
+    the per-batch and per-game folder layouts — and robust to a missing model field."""
+    return os.path.basename(os.path.dirname(dirpath)) or "llm"
 
 
 def collect(logs_root):
@@ -118,11 +126,11 @@ def collect(logs_root):
             print(f"WARNING: could not read {path}: {e}")
             continue
 
-        side = _llm_side(agg)
+        llm_is_white = _llm_is_white(agg)
         elo = _maia_elo_for_run(dirpath, agg)
-        if side is None or elo is None:
+        if llm_is_white is None or elo is None:
             continue
-        model, llm_is_white = side
+        model = _model_key(dirpath)
 
         ww = int(agg.get("white_wins", 0))
         bw = int(agg.get("black_wins", 0))

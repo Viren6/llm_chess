@@ -126,6 +126,10 @@ reset_maia_history = False  # If True, drop move history (reconstruct board from
 # diverse, human-like games); 0 = argmax/deterministic (identical games).
 maia_temperature = 1.0  # 1.0 = full human-policy sampling (maia3-uci default); 0 = argmax
 maia_top_p = 1.0  # Nucleus sampling threshold for Maia (1.0 = disabled)
+# If set to a Unix socket path, the Maia agent talks to a shared maia_server.py instead of
+# spawning its own local Maia subprocess. Lets many concurrent game workers share a few GPU
+# Maia instances (see run_maia_concurrent.py). None = spawn a local subprocess per agent.
+maia_server = None
 
 ## Actions
 
@@ -413,6 +417,7 @@ def run(
             make_move_action=make_move_action,
             maia_path=maia_path,
             maia_model=maia_model,
+            maia_server=maia_server,
             elo=maia_elo,
             use_uci_history=maia_use_uci_history,
             remove_history=reset_maia_history,
@@ -465,6 +470,7 @@ def run(
             make_move_action=make_move_action,
             maia_path=maia_path,
             maia_model=maia_model,
+            maia_server=maia_server,
             elo=maia_elo,
             use_uci_history=maia_use_uci_history,
             remove_history=reset_maia_history,

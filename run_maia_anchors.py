@@ -116,12 +116,18 @@ def _batch_log(log_folder, filename="output.txt"):
 
 
 def _model_of(player) -> str:
-    """Model id for a player, or '' for the engine (which has no llm_config)."""
+    """Model id for a player, or '' for the engine. AG2 stores llm_config as an LLMConfig
+    object (subscriptable) or a dict — both support ['config_list'][0]['model']."""
     cfg = getattr(player, "llm_config", None)
-    if isinstance(cfg, dict):
-        lst = cfg.get("config_list") or [{}]
-        return (lst[0] or {}).get("model", "") if lst else ""
-    return ""
+    if not cfg:  # None or False (engine agents have no llm_config)
+        return ""
+    try:
+        return cfg["config_list"][0]["model"]
+    except Exception:
+        try:
+            return getattr(cfg.config_list[0], "model", "") or ""
+        except Exception:
+            return ""
 
 
 def _slug(name: str) -> str:
