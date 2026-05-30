@@ -1,0 +1,1094 @@
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
+♟ ♟ ♟ ♟ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ♙ ♙ ♙ ♙ ♙
+♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+g1h3,g1f3,b1c3,b1a3,h2h3,g2g3,f2f3,e2e3,d2d3,c2c3,b2b3,a2a3,h2h4,g2g4,f2f4,e2e4,d2d4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move e2e4
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (c2bbacff-b705-42cf-b1ea-e981226ce1fc): Termination message condition on agent 'Player_White' met
+MADE MOVE 1
+Material Count - White: 39, Black: 39
+Prompt Tokens: 937
+Completion Tokens: 257
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+<UciProtocol (pid=2348935)>: stderr >> resolving Maia3 checkpoint for Maia3 79M
+<UciProtocol (pid=2348935)>: stderr >> Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+<UciProtocol (pid=2348935)>: stderr >> loading Maia3 checkpoint /root/.cache/huggingface/hub/models--UofTCSSLab--Maia3-79M/snapshots/a107d6ceb7b298cb04ae1da4edffe2939858b894/maia3-79m.pt
+<UciProtocol (pid=2348935)>: stderr >> Maia3 ready
+<UciProtocol (pid=2348935)>: stderr >> /workspace/llm-venv/lib/python3.12/site-packages/torch/nn/functional.py:2954: UserWarning: Mismatch dtype between input and weight: input dtype = c10::Half, weight dtype = float, Cannot dispatch to fused implementation. (Triggered internally at /pytorch/aten/src/ATen/native/layer_norm.cpp:344.)
+<UciProtocol (pid=2348935)>: stderr >>   return torch.rms_norm(input, normalized_shape, weight, eps)
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move d7d5
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 2
+Material Count - White: 39, Black: 39
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ♙ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ♙ ⭘ ♙ ♙ ♙
+♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+g1h3,g1f3,g1e2,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,d1h5,d1g4,d1f3,d1e2,b1c3,b1a3,e4d5,e4e5,h2h3,g2g3,f2f3,d2d3,c2c3,b2b3,a2a3,h2h4,g2g4,f2f4,d2d4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move e4d5
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (a0d4b444-84c3-453e-bb8f-ead7c67978b2): Termination message condition on agent 'Player_White' met
+MADE MOVE 3
+Material Count - White: 39, Black: 38
+Prompt Tokens: 1929
+Completion Tokens: 1930
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move g8f6
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 4
+Material Count - White: 39, Black: 38
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ♞ ♝ ♛ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ♞ ⭘ ⭘
+⭘ ⭘ ⭘ ♙ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ♙ ⭘ ♙ ♙ ♙
+♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+g1h3,g1f3,g1e2,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,d1h5,d1g4,d1f3,d1e2,b1c3,b1a3,d5d6,h2h3,g2g3,f2f3,d2d3,c2c3,b2b3,a2a3,h2h4,g2g4,f2f4,d2d4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move b1c3
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (2a2b7321-215f-4042-8121-8e8bfe169dad): Termination message condition on agent 'Player_White' met
+MADE MOVE 5
+Material Count - White: 39, Black: 38
+Prompt Tokens: 2920
+Completion Tokens: 6133
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move f6d5
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 6
+Material Count - White: 38, Black: 38
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ♞ ♝ ♛ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♞ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ♙ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ♕ ♔ ♗ ♘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+c3d5,c3b5,c3e4,c3a4,c3e2,c3b1,g1h3,g1f3,g1e2,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,d1h5,d1g4,d1f3,d1e2,a1b1,h2h3,g2g3,f2f3,d2d3,b2b3,a2a3,h2h4,g2g4,f2f4,d2d4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move c3d5
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (29102c5e-d173-4e64-ad20-0fbacb6c0520): Termination message condition on agent 'Player_White' met
+MADE MOVE 7
+Material Count - White: 38, Black: 35
+Prompt Tokens: 3921
+Completion Tokens: 11069
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move d8d5
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 8
+Material Count - White: 35, Black: 35
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ♞ ♝ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ♙ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ♕ ♔ ♗ ♘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+g1h3,g1f3,g1e2,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,d1h5,d1g4,d1f3,d1e2,a1b1,h2h3,g2g3,f2f3,d2d3,c2c3,b2b3,a2a3,h2h4,g2g4,f2f4,d2d4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move d2d4
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (016b78ec-6e90-4227-b34d-7b7ffa450078): Termination message condition on agent 'Player_White' met
+MADE MOVE 9
+Material Count - White: 35, Black: 35
+Prompt Tokens: 4906
+Completion Tokens: 15717
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move b8c6
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 10
+Material Count - White: 35, Black: 35
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ⭘ ♝ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ♞ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♙ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ♕ ♔ ♗ ♘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+g1h3,g1f3,g1e2,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,e1d2,d1h5,d1g4,d1f3,d1d3,d1e2,d1d2,c1h6,c1g5,c1f4,c1e3,c1d2,a1b1,h2h3,g2g3,f2f3,c2c3,b2b3,a2a3,h2h4,g2g4,f2f4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move g1f3
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (3cd2e9e6-e6c2-449a-9422-97c10057763c): Termination message condition on agent 'Player_White' met
+MADE MOVE 11
+Material Count - White: 35, Black: 35
+Prompt Tokens: 5921
+Completion Tokens: 18319
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move c8f5
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 12
+Material Count - White: 35, Black: 35
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ⭘ ⭘ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ♞ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ⭘ ♝ ⭘ ⭘
+⭘ ⭘ ⭘ ♙ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ⭘ ⭘
+♙ ♙ ♙ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ♕ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+f3g5,f3e5,f3h4,f3d2,f3g1,h1g1,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,e1d2,d1d3,d1e2,d1d2,c1h6,c1g5,c1f4,c1e3,c1d2,a1b1,h2h3,g2g3,c2c3,b2b3,a2a3,h2h4,g2g4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move f3e5
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (ffce0c09-02e5-42c4-b717-4f2c6133d1ab): Termination message condition on agent 'Player_White' met
+MADE MOVE 13
+Material Count - White: 35, Black: 35
+Prompt Tokens: 6926
+Completion Tokens: 21890
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move c6d4
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 14
+Material Count - White: 34, Black: 35
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ⭘ ⭘ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ♘ ♝ ⭘ ⭘
+⭘ ⭘ ⭘ ♞ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♙ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ♕ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+e5f7,e5d7,e5g6,e5c6,e5g4,e5c4,e5f3,e5d3,h1g1,f1a6,f1b5,f1c4,f1d3,f1e2,e1d2,d1h5,d1g4,d1d4,d1f3,d1d3,d1e2,d1d2,c1h6,c1g5,c1f4,c1e3,c1d2,a1b1,h2h3,g2g3,f2f3,c2c3,b2b3,a2a3,h2h4,g2g4,f2f4,c2c4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move e5f3
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (4242bdb6-9b81-4f1d-b80c-e7b819fdd41e): Termination message condition on agent 'Player_White' met
+MADE MOVE 15
+Material Count - White: 34, Black: 35
+Prompt Tokens: 7971
+Completion Tokens: 29528
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move d4c2
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 16
+Material Count - White: 33, Black: 35
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ⭘ ⭘ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ⭘ ♝ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ⭘ ⭘
+♙ ♙ ♞ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ♕ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+e1e2,d1c2
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move d1c2
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (fdac4b5d-f396-45a0-b5bf-5bcab1b07a46): Termination message condition on agent 'Player_White' met
+MADE MOVE 17
+Material Count - White: 33, Black: 32
+Prompt Tokens: 8826
+Completion Tokens: 31720
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move f5c2
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 18
+Material Count - White: 24, Black: 32
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ⭘ ⭘ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ⭘ ⭘
+♙ ♙ ♝ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ♗ ⭘ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+f3g5,f3e5,f3h4,f3d4,f3d2,f3g1,h1g1,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,c1h6,c1g5,c1f4,c1e3,c1d2,a1b1,h2h3,g2g3,b2b3,a2a3,h2h4,g2g4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move c1e3
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (b5d3106f-ab8b-4984-811d-b4371cc9cf3e): Termination message condition on agent 'Player_White' met
+MADE MOVE 19
+Material Count - White: 24, Black: 32
+Prompt Tokens: 9810
+Completion Tokens: 42670
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move d5a5
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 20
+Material Count - White: 24, Black: 32
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+♜ ⭘ ⭘ ⭘ ♚ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♛ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ♗ ♘ ⭘ ⭘
+♙ ♙ ♝ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ⭘ ⭘ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+e1e2,f3d2,e3d2,b2b4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move f3d2
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (31ac6591-8972-43d0-a06c-a39532b5e569): Termination message condition on agent 'Player_White' met
+MADE MOVE 21
+Material Count - White: 24, Black: 32
+Prompt Tokens: 10679
+Completion Tokens: 47027
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move e8c8
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 22
+Material Count - White: 24, Black: 32
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+⭘ ⭘ ♚ ♜ ⭘ ♝ ⭘ ♜
+♟ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♛ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ♗ ⭘ ⭘ ⭘
+♙ ♙ ♝ ♘ ⭘ ♙ ♙ ♙
+♖ ⭘ ⭘ ⭘ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+e3a7,e3h6,e3b6,e3g5,e3c5,e3f4,e3d4,h1g1,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,a1d1,a1c1,a1b1,h2h3,g2g3,f2f3,b2b3,a2a3,h2h4,g2g4,f2f4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move e3a7
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (aa869195-e309-48c2-8042-0cf375f40e9b): Termination message condition on agent 'Player_White' met
+MADE MOVE 23
+Material Count - White: 24, Black: 31
+Prompt Tokens: 11663
+Completion Tokens: 50548
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move a5a7
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 24
+Material Count - White: 21, Black: 31
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+⭘ ⭘ ♚ ♜ ⭘ ♝ ⭘ ♜
+♛ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♙ ♙ ♝ ♘ ⭘ ♙ ♙ ♙
+♖ ⭘ ⭘ ⭘ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+d2e4,d2c4,d2f3,d2b3,d2b1,h1g1,f1a6,f1b5,f1c4,f1d3,f1e2,e1e2,a1d1,a1c1,a1b1,h2h3,g2g3,f2f3,b2b3,a2a3,h2h4,g2g4,f2f4,b2b4,a2a4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move d2f3
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (f0b57e09-daa3-43c3-9258-88b162a10d20): Termination message condition on agent 'Player_White' met
+MADE MOVE 25
+Material Count - White: 21, Black: 31
+Prompt Tokens: 12645
+Completion Tokens: 54828
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move a7a5
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 26
+Material Count - White: 21, Black: 31
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+⭘ ⭘ ♚ ♜ ⭘ ♝ ⭘ ♜
+⭘ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♛ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ⭘ ⭘
+♙ ♙ ♝ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ⭘ ⭘ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+e1e2,f3d2,b2b4
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move b2b4
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (5782aedb-977b-4898-97e7-6f73804b8445): Termination message condition on agent 'Player_White' met
+MADE MOVE 27
+Material Count - White: 21, Black: 31
+Prompt Tokens: 13517
+Completion Tokens: 59011
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move a5b4
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 28
+Material Count - White: 20, Black: 31
+Prompt Tokens: 0
+Completion Tokens: 0
+Proxy (to Player_White):
+
+You are a professional chess player and you play as white. Now is your turn to make a move. Before making a move you can pick one of the following actions:
+- 'get_current_board' to get the schema and current status of the board
+- 'get_legal_moves' to get a UCI formatted list of available moves
+- 'make_move <UCI formatted move>' when you are ready to complete your turn (e.g., 'make_move e2e4')
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_current_board
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+⭘ ⭘ ♚ ♜ ⭘ ♝ ⭘ ♜
+⭘ ♟ ♟ ⭘ ♟ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ♛ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ⭘ ⭘
+♙ ⭘ ♝ ⭘ ⭘ ♙ ♙ ♙
+♖ ⭘ ⭘ ⭘ ♔ ♗ ⭘ ♖
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+get_legal_moves
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+e1e2,f3d2
+
+--------------------------------------------------------------------------------
+Player_White (to Proxy):
+
+make_move f3d2
+
+--------------------------------------------------------------------------------
+Proxy (to Player_White):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+
+>>>>>>>> TERMINATING RUN (b88d1b12-068e-4a09-a80e-3ffa3abe61c9): Termination message condition on agent 'Player_White' met
+MADE MOVE 29
+Material Count - White: 20, Black: 31
+Prompt Tokens: 14384
+Completion Tokens: 62542
+Proxy (to Chess_Engine_Maia_Black):
+
+You are a helpful AI Assistant.
+
+--------------------------------------------------------------------------------
+Chess_Engine_Maia_Black (to Proxy):
+
+make_move b4d2
+
+--------------------------------------------------------------------------------
+Proxy (to Chess_Engine_Maia_Black):
+
+Move made, switching player
+
+--------------------------------------------------------------------------------
+MADE MOVE 30
+Material Count - White: 17, Black: 31
+Prompt Tokens: 0
+Completion Tokens: 0
+
+GAME OVER
+
+Chess_Engine_Maia_Black wins due to Checkmate.
+Number of moves made: 30
+
+Wrong Moves (LLM asked to make illegal/impossible move):
+Player White: 0
+Player Black: 0
+
+Wrong Actions (LLM responded with non parseable message):
+Player White: 0
+Player Black: 0
+
+Material Count:
+Player White: 17
+Player Black: 31
+
+Accumulated Reply Time (seconds):
+Player White: 3872.673
+Player Black: 0.000
+
+Game PGN:
+[Event "Chess Game"]
+[Date "2026.05.29"]
+[White "Player White"]
+[Black "Player Black"]
+[Result "0-1"]
+
+1. e4 d5 2. exd5 Nf6 3. Nc3 Nxd5 4. Nxd5 Qxd5 5. d4 Nc6 
+6. Nf3 Bf5 7. Ne5 Nxd4 8. Nf3 Nxc2+ 9. Qxc2 Bxc2 10. Be3 Qa5+ 
+11. Nd2 O-O-O 12. Bxa7 Qxa7 13. Nf3 Qa5+ 14. b4 Qxb4+ 15. Nd2 Qxd2# 
+ 0-1
+
+Costs per agent (white and black):
+
+{'total_cost': 0}
+{'total_cost': 0}
