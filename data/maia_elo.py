@@ -135,10 +135,21 @@ def _completion_tokens_and_moves(dirpath, files, llm_side):
     return ctokens, moves
 
 
+def _usage_sum(usage, model, anchors=None):
+    """Sum (completion_tokens, moves) for a model over the given anchors (all if None)."""
+    ct = mv = 0
+    for elo, u in usage.get(model, {}).items():
+        if anchors is None or elo in anchors:
+            ct += u["ctokens"]
+            mv += u["moves"]
+    return ct, mv
+
+
 def collect(logs_root):
     """Returns (out, usage):
       out:   model -> {maia_elo -> {"W": [w,d,l], "B": [w,d,l]}} from the LLM's perspective.
-      usage: model -> {"ctokens": int, "moves": int} totals (for completion-tokens-per-move)."""
+      usage: model -> {maia_elo -> {"ctokens": int, "moves": int}} (for completion-tokens-per-move,
+             kept per-anchor so a single-anchor table can count only that anchor's games)."""
     out = {}
     usage = {}
     for dirpath, _dirs, files in os.walk(logs_root):
@@ -172,7 +183,7 @@ def collect(logs_root):
         anc[key][2] += losses
 
         ct, mv = _completion_tokens_and_moves(dirpath, files, llm_is_white)
-        u = usage.setdefault(model, {"ctokens": 0, "moves": 0})
+        u = usage.setdefault(model, {}).setdefault(elo, {"ctokens": 0, "moves": 0})
         u["ctokens"] += ct
         u["moves"] += mv
     return out, usage
@@ -191,18 +202,41 @@ def main():
               f"Run run_maia_anchors.py first.")
         return
 
+    # Main table: all anchors. Then a second table restricted to the 600 anchor only.
+    main_rows = build_rows(data, usage, anchors=None, warn=True)
+    print_table(main_rows, f"Maia-anchored Elo — color-balanced, no white-advantage term "
+                           f"(anchors from {args.logs})")
+    write_csv(main_rows, args.out)
+    print(f"\nWrote {args.out}")
+
+    rows600 = build_rows(data, usage, anchors={600}, warn=False)
+    if rows600:
+        print_table(rows600, "Anchor 600 only — Elo implied by performance vs Maia 600")
+        out600 = re.sub(r"\.csv$", "", args.out) + "_anchor600.csv"
+        write_csv(rows600, out600)
+        print(f"\nWrote {out600}")
+
+
+def build_rows(data, usage, anchors=None, warn=True):
+    """Build ranked rows (with cfs) for the given anchor filter. anchors=None uses all anchors;
+    otherwise only those Maia Elos. Models with no games at the selected anchors are omitted."""
     rows = []
     for model in sorted(data):
         opp_elos, Ns, Ss = [], [], []
         anchor_lines = []
         balanced_games = 0
+        has_games = False
         for elo, sides in sorted(data[model].items()):
+            if anchors is not None and elo not in anchors:
+                continue
+            has_games = True
             wW, dW, lW = sides["W"]
             wB, dB, lB = sides["B"]
             nW, nB = wW + dW + lW, wB + dB + lB
             if nW == 0 or nB == 0:
-                print(f"WARNING: {model} anchor {elo} skipped — single color "
-                      f"(B{nB}/W{nW}); both colors are required to force balance.")
+                if warn:
+                    print(f"WARNING: {model} anchor {elo} skipped — single color "
+                          f"(B{nB}/W{nW}); both colors are required to force balance.")
                 continue
             sW = (wW + 0.5 * dW) / nW
             sB = (wB + 0.5 * dB) / nB
@@ -214,9 +248,12 @@ def main():
             balanced_games += 2 * n
             anchor_lines.append(f"{elo}:{S:.2f}(B{nB}/W{nW})")
 
+        if not has_games:
+            continue  # model never played the selected anchor(s) -> not in this table
+
         R, se = fit_elo(opp_elos, Ns, Ss)
-        u = usage.get(model, {"ctokens": 0, "moves": 0})
-        tpm = (u["ctokens"] / u["moves"]) if u["moves"] else float("nan")
+        ct, mv = _usage_sum(usage, model, anchors)
+        tpm = (ct / mv) if mv else float("nan")
         rows.append({
             "model": model,
             "_R": R, "_se": se,                              # numeric, for ranking + cfs
@@ -251,10 +288,11 @@ def main():
         r["elo_moe_95"] = "" if moe != moe else f"{moe:.1f}"
         r["cfs"] = "" if cfs != cfs else f"{cfs * 100:.1f}%"
         r["completion_tokens_per_move"] = "" if tpm != tpm else f"{tpm:.0f}"
+    return rows
 
-    # Console table
-    print(f"\n=== Maia-anchored Elo — color-balanced, no white-advantage term "
-          f"(anchors from {args.logs}) ===\n")
+
+def print_table(rows, title):
+    print(f"\n=== {title} ===\n")
     w_model = max(len(r["model"]) for r in rows + [{"model": "model"}])
     print(f"{'model':<{w_model}}  {'elo':>8}  {'+/-95%':>7}  {'cfs':>7}  {'bal.games':>9}  "
           f"{'tok/move':>8}  per-anchor score(games)")
@@ -268,14 +306,15 @@ def main():
     print("cfs = confidence this model's Elo exceeds the model one row below (blank = bottom row "
           "or neighbour has no Elo). tok/move = LLM completion tokens per move it made.")
 
+
+def write_csv(rows, path):
     fieldnames = ["model", "elo", "elo_moe_95", "cfs", "balanced_games",
                   "completion_tokens_per_move", "per_anchor_score"]
-    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-    with open(args.out, "w", newline="", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
-    print(f"\nWrote {args.out}")
 
 
 if __name__ == "__main__":
