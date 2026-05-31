@@ -68,10 +68,12 @@ def _model_of_config(cfg) -> str:
 
 
 def _hyperparams(args):
-    """Per-side LLM overrides (temperature pin + thinking/provider via extra_body)."""
+    """Per-side LLM overrides (temperature pin + reasoning/thinking/provider via extra_body)."""
     hp = {}
     if args.llm_temperature is not None:
         hp["hyperparams"] = {"temperature": args.llm_temperature}
+    if getattr(args, "reasoning_effort", None) is not None:
+        hp["reasoning_effort"] = args.reasoning_effort
     extra_body = {}
     provider = {}
     if args.quant is not None:
@@ -82,7 +84,14 @@ def _hyperparams(args):
     if provider:
         extra_body["provider"] = provider
     if args.thinking:
-        extra_body["chat_template_kwargs"] = {"enable_thinking": True}
+        # Different providers toggle native thinking differently:
+        #  - chat_template (DeepInfra gemma/qwen): extra_body.chat_template_kwargs.enable_thinking
+        #  - thinking_block (DeepSeek v4):         extra_body.thinking = {"type": "enabled"}
+        style = getattr(args, "thinking_style", "chat_template")
+        if style == "thinking_block":
+            extra_body["thinking"] = {"type": "enabled"}
+        else:
+            extra_body["chat_template_kwargs"] = {"enable_thinking": True}
     if extra_body:
         hp["provider_overrides"] = {"extra_body": extra_body}
     return hp or None
@@ -91,6 +100,12 @@ def _hyperparams(args):
 def _add_llm_args(ap):
     ap.add_argument("--thinking", action=argparse.BooleanOptionalAction, default=True,
                     help="enable the model's native thinking mode (default: on)")
+    ap.add_argument("--thinking-style", choices=["chat_template", "thinking_block"],
+                    default="chat_template",
+                    help="how --thinking is expressed: chat_template (DeepInfra gemma/qwen "
+                         "enable_thinking) or thinking_block (DeepSeek extra_body.thinking)")
+    ap.add_argument("--reasoning-effort", default=None,
+                    help="reasoning_effort to send (e.g. high); provider must support it")
     ap.add_argument("--llm-temperature", type=float, default=None,
                     help="pin the LLM sampling temperature")
     ap.add_argument("--provider", default=None, help="force one OpenRouter provider endpoint")
