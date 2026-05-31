@@ -112,9 +112,35 @@ def _model_key(dirpath):
     return os.path.basename(os.path.dirname(dirpath)) or "llm"
 
 
+def _completion_tokens_and_moves(dirpath, files, llm_side):
+    """Sum the LLM's completion tokens and moves-made from the per-game JSON(s) in a run
+    folder (the .json that isn't _aggregate_results.json). Returns (completion_tokens, moves).
+    Best-effort: a missing/malformed per-game JSON contributes nothing."""
+    side = "white" if llm_side else "black"
+    player_key = "player_white" if llm_side else "player_black"
+    ctokens = moves = 0
+    for fn in files:
+        if fn == "_aggregate_results.json" or not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(dirpath, fn), encoding="utf-8") as gf:
+                g = json.load(gf)
+        except Exception:
+            continue
+        usage = (g.get("usage_stats") or {}).get(side) or {}
+        for v in usage.values():  # per-model sub-dicts; skip scalar 'total_cost'
+            if isinstance(v, dict) and "completion_tokens" in v:
+                ctokens += int(v.get("completion_tokens") or 0)
+        moves += int((g.get(player_key) or {}).get("make_move_count") or 0)
+    return ctokens, moves
+
+
 def collect(logs_root):
-    """model -> {maia_elo -> {"W": [w,d,l], "B": [w,d,l]}} from the LLM's perspective."""
+    """Returns (out, usage):
+      out:   model -> {maia_elo -> {"W": [w,d,l], "B": [w,d,l]}} from the LLM's perspective.
+      usage: model -> {"ctokens": int, "moves": int} totals (for completion-tokens-per-move)."""
     out = {}
+    usage = {}
     for dirpath, _dirs, files in os.walk(logs_root):
         if "_aggregate_results.json" not in files:
             continue
@@ -144,7 +170,12 @@ def collect(logs_root):
         anc[key][0] += wins
         anc[key][1] += d
         anc[key][2] += losses
-    return out
+
+        ct, mv = _completion_tokens_and_moves(dirpath, files, llm_is_white)
+        u = usage.setdefault(model, {"ctokens": 0, "moves": 0})
+        u["ctokens"] += ct
+        u["moves"] += mv
+    return out, usage
 
 
 def main():
@@ -154,7 +185,7 @@ def main():
     ap.add_argument("--out", default="data/maia_elo.csv")
     args = ap.parse_args()
 
-    data = collect(args.logs)
+    data, usage = collect(args.logs)
     if not data:
         print(f"No Maia anchor runs found under {args.logs}. "
               f"Run run_maia_anchors.py first.")
@@ -184,30 +215,64 @@ def main():
             anchor_lines.append(f"{elo}:{S:.2f}(B{nB}/W{nW})")
 
         R, se = fit_elo(opp_elos, Ns, Ss)
-        moe = 1.96 * se if se == se else float("nan")  # se != se => NaN
+        u = usage.get(model, {"ctokens": 0, "moves": 0})
+        tpm = (u["ctokens"] / u["moves"]) if u["moves"] else float("nan")
         rows.append({
             "model": model,
-            "elo": "" if R != R else f"{R:.1f}",
-            "elo_moe_95": "" if moe != moe else f"{moe:.1f}",
+            "_R": R, "_se": se,                              # numeric, for ranking + cfs
             "balanced_games": balanced_games,
+            "_tpm": tpm,
             "per_anchor_score": "  ".join(anchor_lines) if anchor_lines else "(no balanced anchors)",
         })
+
+    # Rank highest Elo first; models without a finite Elo sink to the bottom.
+    rows.sort(key=lambda r: (r["_R"] != r["_R"], -(r["_R"] if r["_R"] == r["_R"] else 0.0), r["model"]))
+
+    # cfs = confidence-for-superiority: P(this model's Elo > the model one row below), from two
+    # independent normal Elo estimates -> Phi((Ri-Rj)/sqrt(sei^2+sej^2)). Blank for the last row
+    # or when either neighbour lacks a finite Elo.
+    def _phi(x):
+        return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+    for i, r in enumerate(rows):
+        r["_cfs"] = float("nan")
+        Ri, sei = r["_R"], r["_se"]
+        if i + 1 < len(rows) and Ri == Ri and sei == sei:
+            Rj, sej = rows[i + 1]["_R"], rows[i + 1]["_se"]
+            denom = math.sqrt(sei * sei + sej * sej) if (sej == sej) else float("nan")
+            if Rj == Rj and denom == denom and denom > 0:
+                r["_cfs"] = _phi((Ri - Rj) / denom)
+
+    # Render display fields
+    for r in rows:
+        R, se, cfs, tpm = r["_R"], r["_se"], r["_cfs"], r["_tpm"]
+        moe = 1.96 * se if se == se else float("nan")
+        r["elo"] = "" if R != R else f"{R:.1f}"
+        r["elo_moe_95"] = "" if moe != moe else f"{moe:.1f}"
+        r["cfs"] = "" if cfs != cfs else f"{cfs * 100:.1f}%"
+        r["completion_tokens_per_move"] = "" if tpm != tpm else f"{tpm:.0f}"
 
     # Console table
     print(f"\n=== Maia-anchored Elo — color-balanced, no white-advantage term "
           f"(anchors from {args.logs}) ===\n")
     w_model = max(len(r["model"]) for r in rows + [{"model": "model"}])
-    print(f"{'model':<{w_model}}  {'elo':>8}  {'+/-95%':>7}  {'bal.games':>9}  per-anchor score(games)")
+    print(f"{'model':<{w_model}}  {'elo':>8}  {'+/-95%':>7}  {'cfs':>7}  {'bal.games':>9}  "
+          f"{'tok/move':>8}  per-anchor score(games)")
     for r in rows:
         elo_disp = r["elo"] or "(none)"
         print(f"{r['model']:<{w_model}}  {elo_disp:>8}  {r['elo_moe_95'] or '':>7}  "
-              f"{r['balanced_games']:>9}  {r['per_anchor_score']}")
+              f"{r['cfs'] or '':>7}  {r['balanced_games']:>9}  "
+              f"{r['completion_tokens_per_move'] or '':>8}  {r['per_anchor_score']}")
     print("\nPer anchor: balanced score = mean(White score, Black score); (Bn/Wn) = games "
           "per color. Blank Elo = no balanced anchor, or score 0%/100% across anchors.")
+    print("cfs = confidence this model's Elo exceeds the model one row below (blank = bottom row "
+          "or neighbour has no Elo). tok/move = LLM completion tokens per move it made.")
 
+    fieldnames = ["model", "elo", "elo_moe_95", "cfs", "balanced_games",
+                  "completion_tokens_per_move", "per_anchor_score"]
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     print(f"\nWrote {args.out}")
