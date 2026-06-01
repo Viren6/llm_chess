@@ -103,7 +103,9 @@ class GameAgent(ConversableAgent):
             try:
                 for choice in getattr(resp, "choices", None) or []:
                     msg = getattr(choice, "message", None)
-                    r = getattr(msg, "reasoning_content", None) if msg is not None else None
+                    # reasoning_content: DeepInfra/DeepSeek; reasoning: OpenRouter (e.g. Gemini)
+                    r = (getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None)) \
+                        if msg is not None else None
                     if r:
                         reasoning = r
                         break

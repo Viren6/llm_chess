@@ -87,11 +87,18 @@ def _hyperparams(args):
         # Different providers toggle native thinking differently:
         #  - chat_template (DeepInfra gemma/qwen): extra_body.chat_template_kwargs.enable_thinking
         #  - thinking_block (DeepSeek v4):         extra_body.thinking = {"type": "enabled"}
+        #  - reasoning (OpenRouter, e.g. Gemini):  extra_body.reasoning = {"enabled": True} (or effort)
         style = getattr(args, "thinking_style", "chat_template")
         if style == "thinking_block":
             extra_body["thinking"] = {"type": "enabled"}
+        elif style == "reasoning":
+            extra_body["reasoning"] = ({"effort": args.reasoning_effort}
+                                       if getattr(args, "reasoning_effort", None) is not None
+                                       else {"enabled": True})
         else:
             extra_body["chat_template_kwargs"] = {"enable_thinking": True}
+    if getattr(args, "service_tier", None) is not None:
+        extra_body["service_tier"] = args.service_tier  # e.g. OpenRouter 'flex' (half price)
     if extra_body:
         hp["provider_overrides"] = {"extra_body": extra_body}
     return hp or None
@@ -100,12 +107,15 @@ def _hyperparams(args):
 def _add_llm_args(ap):
     ap.add_argument("--thinking", action=argparse.BooleanOptionalAction, default=True,
                     help="enable the model's native thinking mode (default: on)")
-    ap.add_argument("--thinking-style", choices=["chat_template", "thinking_block"],
+    ap.add_argument("--thinking-style", choices=["chat_template", "thinking_block", "reasoning"],
                     default="chat_template",
                     help="how --thinking is expressed: chat_template (DeepInfra gemma/qwen "
-                         "enable_thinking) or thinking_block (DeepSeek extra_body.thinking)")
+                         "enable_thinking), thinking_block (DeepSeek extra_body.thinking), or "
+                         "reasoning (OpenRouter extra_body.reasoning, e.g. Gemini)")
     ap.add_argument("--reasoning-effort", default=None,
                     help="reasoning_effort to send (e.g. high); provider must support it")
+    ap.add_argument("--service-tier", default=None,
+                    help="service_tier to send (e.g. 'flex' for OpenRouter half-price)")
     ap.add_argument("--llm-temperature", type=float, default=None,
                     help="pin the LLM sampling temperature")
     ap.add_argument("--provider", default=None, help="force one OpenRouter provider endpoint")
