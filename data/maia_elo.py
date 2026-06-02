@@ -135,6 +135,24 @@ def _completion_tokens_and_moves(dirpath, files, llm_side):
     return ctokens, moves
 
 
+def _game_errored(dirpath, files):
+    """True if the per-game JSON marks this game as ended by an infrastructure ERROR
+    (API/empty-response/etc.) rather than a real chess result. Such games must NOT be
+    counted: the runner records them winner='NONE', and the per-folder aggregate then
+    buckets that as a *draw* (0.5), which would inflate the model's score/Elo."""
+    for fn in files:
+        if fn == "_aggregate_results.json" or not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(dirpath, fn), encoding="utf-8") as gf:
+                g = json.load(gf)
+        except Exception:
+            continue
+        if str(g.get("reason", "")).strip().upper() == "ERROR OCCURED":  # TerminationReason.ERROR
+            return True
+    return False
+
+
 def _usage_sum(usage, model, anchors=None):
     """Sum (completion_tokens, moves) for a model over the given anchors (all if None)."""
     ct = mv = 0
@@ -146,12 +164,14 @@ def _usage_sum(usage, model, anchors=None):
 
 
 def collect(logs_root):
-    """Returns (out, usage):
-      out:   model -> {maia_elo -> {"W": [w,d,l], "B": [w,d,l]}} from the LLM's perspective.
-      usage: model -> {maia_elo -> {"ctokens": int, "moves": int}} (for completion-tokens-per-move,
-             kept per-anchor so a single-anchor table can count only that anchor's games)."""
+    """Returns (out, usage, errored):
+      out:     model -> {maia_elo -> {"W": [w,d,l], "B": [w,d,l]}} from the LLM's perspective.
+      usage:   model -> {maia_elo -> {"ctokens": int, "moves": int}} (completion-tokens-per-move,
+               kept per-anchor so a single-anchor table can count only that anchor's games).
+      errored: model -> count of games dropped as infrastructure errors (see _game_errored)."""
     out = {}
     usage = {}
+    errored = {}
     for dirpath, _dirs, files in os.walk(logs_root):
         if "_aggregate_results.json" not in files:
             continue
@@ -168,6 +188,10 @@ def collect(logs_root):
         if llm_is_white is None or elo is None:
             continue
         model = _model_key(dirpath)
+
+        if _game_errored(dirpath, files):  # drop infra-error games (would count as spurious draws)
+            errored[model] = errored.get(model, 0) + 1
+            continue
 
         ww = int(agg.get("white_wins", 0))
         bw = int(agg.get("black_wins", 0))
@@ -186,7 +210,7 @@ def collect(logs_root):
         u = usage.setdefault(model, {}).setdefault(elo, {"ctokens": 0, "moves": 0})
         u["ctokens"] += ct
         u["moves"] += mv
-    return out, usage
+    return out, usage, errored
 
 
 def main():
@@ -196,7 +220,12 @@ def main():
     ap.add_argument("--out", default="data/maia_elo.csv")
     args = ap.parse_args()
 
-    data, usage = collect(args.logs)
+    data, usage, errored = collect(args.logs)
+    if errored:
+        total_err = sum(errored.values())
+        print(f"NOTE: dropped {total_err} infrastructure-error game(s) (not counted, would "
+              f"otherwise score as draws): "
+              + ", ".join(f"{m}:{n}" for m, n in sorted(errored.items())))
     if not data:
         print(f"No Maia anchor runs found under {args.logs}. "
               f"Run run_maia_anchors.py first.")

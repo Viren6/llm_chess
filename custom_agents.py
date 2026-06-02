@@ -112,6 +112,18 @@ class GameAgent(ConversableAgent):
             except Exception:
                 reasoning = None
             self._last_reasoning = reasoning
+            # Some providers (e.g. OpenRouter flex) occasionally return HTTP 200 with an error
+            # body and NO choices. autogen's message_retrieval would then crash with an opaque
+            # "'NoneType' object is not iterable" that isn't retryable -> the whole game aborts
+            # (and gets miscounted as a draw). Convert it into a clear, RETRYABLE error instead.
+            if not getattr(resp, "choices", None):
+                detail = ""
+                try:
+                    detail = str((resp.model_extra or {}).get("error", "") or "")
+                except Exception:
+                    pass
+                raise RuntimeError("provider returned no choices (empty/malformed response); "
+                                   f"transient — try again later. {detail}".strip())
             return resp
 
         client.create = create
