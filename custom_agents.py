@@ -28,6 +28,11 @@ def _quit_open_maia_engines():
 
 def is_retryable_error(exception) -> bool:
     """Check if an exception is retryable based on its error message."""
+    import json as _json
+    # A transient malformed/truncated response body (provider returned non-JSON) surfaces as
+    # a JSONDecodeError ("Expecting value: line .. column ..") — retry rather than abort the game.
+    if isinstance(exception, _json.JSONDecodeError):
+        return True
     # Check specific error messages, LOWER CASE
     error_message = str(exception).lower()
     retryable_messages = [
@@ -42,6 +47,7 @@ def is_retryable_error(exception) -> bool:
         "is currently over capacity",  # Groq
         "error code: 429",
         "limit exceeded",  # Cerebras
+        "expecting value",  # json.JSONDecodeError text, in case it arrives wrapped as a str
     ]
 
     return any(msg in error_message for msg in retryable_messages)

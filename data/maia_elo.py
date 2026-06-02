@@ -175,11 +175,15 @@ def collect(logs_root):
     for dirpath, _dirs, files in os.walk(logs_root):
         if "_aggregate_results.json" not in files:
             continue
+        is_maia_run = bool(MAIA_ELO_RE.search(dirpath.replace(os.sep, "/").lower()))
+        if not is_maia_run:
+            continue  # not a Maia anchor run (e.g. dragon-lvl-*) -> nothing here is used
         path = os.path.join(dirpath, "_aggregate_results.json")
         try:
             with open(path, encoding="utf-8") as f:
                 agg = json.load(f)
         except Exception as e:
+            # Only a real Maia aggregate being unreadable is worth flagging.
             print(f"WARNING: could not read {path}: {e}")
             continue
 
