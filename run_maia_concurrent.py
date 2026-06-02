@@ -72,8 +72,13 @@ def _hyperparams(args):
     hp = {}
     if args.llm_temperature is not None:
         hp["hyperparams"] = {"temperature": args.llm_temperature}
-    if getattr(args, "reasoning_effort", None) is not None:
-        hp["reasoning_effort"] = args.reasoning_effort
+    style = getattr(args, "thinking_style", "chat_template")
+    effort = getattr(args, "reasoning_effort", None)
+    # Top-level reasoning_effort is for providers that take it directly (DeepSeek/OpenAI-style).
+    # For OpenRouter's 'reasoning' style the effort rides inside extra_body.reasoning instead,
+    # so don't also send it top-level (avoids duplicate/conflicting reasoning params).
+    if effort is not None and style != "reasoning":
+        hp["reasoning_effort"] = effort
     extra_body = {}
     provider = {}
     if args.quant is not None:
@@ -88,13 +93,10 @@ def _hyperparams(args):
         #  - chat_template (DeepInfra gemma/qwen): extra_body.chat_template_kwargs.enable_thinking
         #  - thinking_block (DeepSeek v4):         extra_body.thinking = {"type": "enabled"}
         #  - reasoning (OpenRouter, e.g. Gemini):  extra_body.reasoning = {"enabled": True} (or effort)
-        style = getattr(args, "thinking_style", "chat_template")
         if style == "thinking_block":
             extra_body["thinking"] = {"type": "enabled"}
         elif style == "reasoning":
-            extra_body["reasoning"] = ({"effort": args.reasoning_effort}
-                                       if getattr(args, "reasoning_effort", None) is not None
-                                       else {"enabled": True})
+            extra_body["reasoning"] = {"effort": effort} if effort is not None else {"enabled": True}
         else:
             extra_body["chat_template_kwargs"] = {"enable_thinking": True}
     if getattr(args, "service_tier", None) is not None:
