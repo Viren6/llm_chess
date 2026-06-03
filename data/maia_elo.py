@@ -37,6 +37,7 @@ REASONING_SUFFIX = {
     "google-gemini-3.1-pro-preview": "-high",
     "google-gemini-3.5-flash": "-high",
     "deepseek-v4-pro": "-high",
+    "openai-gpt-5.5": "-xhigh",
 }
 
 # Output price per 1M completion tokens, per model — drives the $/move column
@@ -47,6 +48,7 @@ PRICE_PER_MTOK = {
     "google-gemma-4-31B-it": 0.32,
     "Qwen-Qwen3.6-27B": 3.20,
     "google-gemini-3.5-flash": 4.50,
+    "openai-gpt-5.5": 15.00,
 }
 
 
