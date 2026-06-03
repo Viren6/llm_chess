@@ -31,6 +31,24 @@ import re
 
 MAIA_ELO_RE = re.compile(r"maia-elo-(\d+)")
 
+# Reasoning-effort label appended to the model name in the tables (display only; keyed by
+# the model folder slug). These three runs were launched with high reasoning effort.
+REASONING_SUFFIX = {
+    "google-gemini-3.1-pro-preview": "-high",
+    "google-gemini-3.5-flash": "-high",
+    "deepseek-v4-pro": "-high",
+}
+
+# Output price per 1M completion tokens, per model — drives the $/move column
+# ($/move = tok/move * price / 1e6). Matches the current table order top->bottom.
+PRICE_PER_MTOK = {
+    "google-gemini-3.1-pro-preview": 6.00,
+    "deepseek-v4-pro": 0.87,
+    "google-gemma-4-31B-it": 0.32,
+    "Qwen-Qwen3.6-27B": 3.20,
+    "google-gemini-3.5-flash": 4.50,
+}
+
 
 def fit_elo(opp_elos, Ns, Ss):
     """Logistic-MLE Elo from per-anchor (opponent Elo, weight N, score S in [0,1]).
@@ -279,7 +297,7 @@ def build_rows(data, usage, anchors=None, warn=True):
             Ss.append(S)
             Ns.append(2 * n)
             balanced_games += 2 * n
-            anchor_lines.append(f"{elo}:{S:.2f}(B{nB}/W{nW})")
+            anchor_lines.append(f"{elo}:{S:.3f}(B{nB}/W{nW})")
 
         if not has_games:
             continue  # model never played the selected anchor(s) -> not in this table
@@ -287,11 +305,15 @@ def build_rows(data, usage, anchors=None, warn=True):
         R, se = fit_elo(opp_elos, Ns, Ss)
         ct, mv = _usage_sum(usage, model, anchors)
         tpm = (ct / mv) if mv else float("nan")
+        price = PRICE_PER_MTOK.get(model)  # $/1M completion tokens
+        dpm = (tpm * price / 1e6) if (price is not None and tpm == tpm) else float("nan")
         rows.append({
             "model": model,
+            "display_model": model + REASONING_SUFFIX.get(model, ""),
             "_R": R, "_se": se,                              # numeric, for ranking + cfs
             "balanced_games": balanced_games,
             "_tpm": tpm,
+            "_dpm": dpm,
             "per_anchor_score": "  ".join(anchor_lines) if anchor_lines else "(no balanced anchors)",
         })
 
@@ -315,39 +337,45 @@ def build_rows(data, usage, anchors=None, warn=True):
 
     # Render display fields
     for r in rows:
-        R, se, cfs, tpm = r["_R"], r["_se"], r["_cfs"], r["_tpm"]
+        R, se, cfs, tpm, dpm = r["_R"], r["_se"], r["_cfs"], r["_tpm"], r["_dpm"]
         moe = 1.96 * se if se == se else float("nan")
         r["elo"] = "" if R != R else f"{R:.1f}"
         r["elo_moe_95"] = "" if moe != moe else f"{moe:.1f}"
-        r["cfs"] = "" if cfs != cfs else f"{cfs * 100:.1f}%"
+        r["cfs"] = "" if cfs != cfs else f"{cfs * 100:.1f}"
         r["completion_tokens_per_move"] = "" if tpm != tpm else f"{tpm:.0f}"
+        r["cents_per_move"] = "" if dpm != dpm else f"{dpm * 100:.2f}"
     return rows
 
 
 def print_table(rows, title):
     print(f"\n=== {title} ===\n")
-    w_model = max(len(r["model"]) for r in rows + [{"model": "model"}])
-    print(f"{'model':<{w_model}}  {'elo':>8}  {'+/-95%':>7}  {'cfs':>7}  {'bal.games':>9}  "
-          f"{'tok/move':>8}  per-anchor score(games)")
+    w_model = max(len(r["display_model"]) for r in rows + [{"display_model": "model"}])
+    print(f"{'model':<{w_model}}  {'elo':>8}  {'+/-95%':>7}  {'cfs%':>7}  {'bal.games':>9}  "
+          f"{'tok/move':>8}  {'¢/move':>8}  per-anchor score(games)")
     for r in rows:
         elo_disp = r["elo"] or "(none)"
-        print(f"{r['model']:<{w_model}}  {elo_disp:>8}  {r['elo_moe_95'] or '':>7}  "
+        print(f"{r['display_model']:<{w_model}}  {elo_disp:>8}  {r['elo_moe_95'] or '':>7}  "
               f"{r['cfs'] or '':>7}  {r['balanced_games']:>9}  "
-              f"{r['completion_tokens_per_move'] or '':>8}  {r['per_anchor_score']}")
+              f"{r['completion_tokens_per_move'] or '':>8}  {r['cents_per_move'] or '':>8}  "
+              f"{r['per_anchor_score']}")
     print("\nPer anchor: balanced score = mean(White score, Black score); (Bn/Wn) = games "
           "per color. Blank Elo = no balanced anchor, or score 0%/100% across anchors.")
     print("cfs = confidence this model's Elo exceeds the model one row below (blank = bottom row "
-          "or neighbour has no Elo). tok/move = LLM completion tokens per move it made.")
+          "or neighbour has no Elo). tok/move = LLM completion tokens per move it made; "
+          "¢/move = tok/move * output price/1M tokens * 100 (cents).")
 
 
 def write_csv(rows, path):
     fieldnames = ["model", "elo", "elo_moe_95", "cfs", "balanced_games",
-                  "completion_tokens_per_move", "per_anchor_score"]
+                  "completion_tokens_per_move", "cents_per_move", "per_anchor_score"]
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(rows)
+        for r in rows:
+            row = dict(r)
+            row["model"] = r.get("display_model", r["model"])  # name with the -high suffix
+            writer.writerow(row)
 
 
 if __name__ == "__main__":
