@@ -33,12 +33,17 @@ MAIA_ELO_RE = re.compile(r"maia-elo-(\d+)")
 
 # Reasoning-effort label appended to the model name in the tables (display only; keyed by
 # the model folder slug). These three runs were launched with high reasoning effort.
-REASONING_SUFFIX = {
-    "google-gemini-3.1-pro-preview": "-high",
-    "google-gemini-3.5-flash": "-high",
-    "deepseek-v4-pro": "-high",
-    "openai-gpt-5.5": "-xhigh",   # gpt-5.5 (both OpenRouter and official-OpenAI routes, merged)
+# Reasoning effort is now recorded per game (aggregate "reasoning_effort") AND encoded in the
+# run folder ("<model>-<effort>"). This map is only a FALLBACK for legacy games that predate
+# the field (and whose folder has no effort suffix) — it gives them their intended label.
+DEFAULT_EFFORT = {
+    "google-gemini-3.1-pro-preview": "high",
+    "google-gemini-3.5-flash": "high",
+    "deepseek-v4-pro": "high",
+    "openai-gpt-5.5": "xhigh",
 }
+# Known reasoning-effort tiers, used to strip the "-<effort>" suffix off a folder slug.
+EFFORT_TIERS = ("minimal", "low", "medium", "high", "xhigh")
 
 # Different folder slugs for the SAME model (different API route) -> merge into one row.
 # OpenAI-direct writes a "gpt-5.5" folder; OpenRouter writes "openai-gpt-5.5".
@@ -217,13 +222,27 @@ def collect(logs_root):
         elo = _maia_elo_for_run(dirpath, agg)
         if llm_is_white is None or elo is None:
             continue
-        # Separate the token-lean 'simple' harness from the standard multi-turn one: same model
-        # folder, different prompt protocol -> different rows (tagged " (simple)").
-        slug = _model_key(dirpath)
-        slug = CANONICAL_SLUG.get(slug, slug)  # merge alternate API-route folders for the same model
+        # Build a composite row key "base|effort|prompt_type" so the table separates by model,
+        # reasoning-effort tier, AND harness variant. effort + base are derived as follows:
+        #   - effort: from aggregate metadata (new runs) else DEFAULT_EFFORT (legacy).
+        #   - base model: folder slug with any "-<effort>" suffix stripped, then canonicalized
+        #                 (merges API-route folders, e.g. gpt-5.5 -> openai-gpt-5.5).
+        folder_slug = _model_key(dirpath)
+        eff_meta = agg.get("reasoning_effort")
+        if eff_meta:
+            eff = str(eff_meta).lower()
+            base = folder_slug[:-(len(eff) + 1)] if folder_slug.endswith(f"-{eff}") else folder_slug
+        else:
+            # legacy: strip a known effort tier off the folder if present, else whole slug
+            base = folder_slug
+            for t in EFFORT_TIERS:
+                if folder_slug.endswith(f"-{t}"):
+                    base = folder_slug[:-(len(t) + 1)]
+                    break
+            eff = str(DEFAULT_EFFORT.get(CANONICAL_SLUG.get(base, base), "")).lower()
+        base = CANONICAL_SLUG.get(base, base)
         ptype = str(agg.get("prompt_type", "standard")).lower()
-        # Separate harness variants into their own rows: standard, simple (UCI), simple-sans (SAN).
-        model = slug if ptype == "standard" else f"{slug} ({ptype})"
+        model = f"{base}|{eff}|{ptype}"
 
         if _game_errored(dirpath, files):  # drop infra-error games (would count as spurious draws)
             errored[model] = errored.get(model, 0) + 1
@@ -319,15 +338,13 @@ def build_rows(data, usage, anchors=None, warn=True):
         R, se = fit_elo(opp_elos, Ns, Ss)
         ct, mv = _usage_sum(usage, model, anchors)
         tpm = (ct / mv) if mv else float("nan")
-        # REASONING_SUFFIX/PRICE_PER_MTOK are keyed by the raw model slug, not the " (<ptype>)" tag.
-        if model.endswith(")") and " (" in model:
-            i = model.rindex(" (")
-            slug, tag = model[:i], model[i:]   # tag e.g. " (simple)" / " (simple-sans)"
-        else:
-            slug, tag = model, ""
-        price = PRICE_PER_MTOK.get(slug)  # $/1M completion tokens
+        # model key is "base|effort|prompt_type"; PRICE_PER_MTOK is keyed by the base model slug.
+        base, eff, ptype = model.split("|", 2)
+        price = PRICE_PER_MTOK.get(base)  # $/1M completion tokens
         dpm = (tpm * price / 1e6) if (price is not None and tpm == tpm) else float("nan")
-        display_model = slug + REASONING_SUFFIX.get(slug, "") + tag
+        display_model = (base
+                         + (f"-{eff}" if eff else "")
+                         + (f" ({ptype})" if ptype != "standard" else ""))
         rows.append({
             "model": model,
             "display_model": display_model,

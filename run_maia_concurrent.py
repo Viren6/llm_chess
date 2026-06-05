@@ -174,6 +174,7 @@ def _worker(args):
     else:
         agg["draws"] = 1
     agg["prompt_type"] = stats.get("prompt_type", "standard")  # 'simple' = single-prompt-per-move harness
+    agg["reasoning_effort"] = getattr(args, "reasoning_effort", None)  # so the table separates effort tiers
     agg["player_white"] = {"name": pw.name, "model": _model_of(pw)}
     agg["player_black"] = {"name": pb.name, "model": _model_of(pb)}
     with open(os.path.join(args.out, "_aggregate_results.json"), "w", encoding="utf-8") as f:
@@ -329,6 +330,10 @@ def _launch(args):
     # Validate .env + model slug once (fail fast before spinning up servers).
     cfg_w, cfg_b = get_llms(white_hyperparams=_hyperparams(args), black_hyperparams=_hyperparams(args))
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
+    # Effort-specific folder so different reasoning_effort tiers (e.g. medium vs xhigh) never
+    # pool on disk. The base model slug stays recoverable (table strips the "-<effort>" suffix).
+    if getattr(args, "reasoning_effort", None):
+        model_slug = f"{model_slug}-{args.reasoning_effort}"
 
     jobs = [(elo, color, i)
             for elo in args.elos for color in colors for i in range(args.reps)]
