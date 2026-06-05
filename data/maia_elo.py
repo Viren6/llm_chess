@@ -300,6 +300,13 @@ def main():
         write_csv(rows600, out600)
         print(f"\nWrote {out600}")
 
+    rows1800 = build_rows(data, usage, anchors={1800}, warn=False)
+    if rows1800:
+        print_table(rows1800, "Anchor 1800 only — Elo implied by performance vs Maia 1800")
+        out1800 = re.sub(r"\.csv$", "", args.out) + "_anchor1800.csv"
+        write_csv(rows1800, out1800)
+        print(f"\nWrote {out1800}")
+
 
 def build_rows(data, usage, anchors=None, warn=True):
     """Build ranked rows (with cfs) for the given anchor filter. anchors=None uses all anchors;
