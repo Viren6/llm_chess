@@ -726,11 +726,17 @@ def run_simple(
         ["move made, switching player", TerminationReason.TOO_MANY_WRONG_ACTIONS.value.lower()]
     )
 
+    # The non-explain harness wants terse single-move replies; the -explain harness needs the
+    # written analysis, so the "reply with a single legal move" system message MUST NOT be used
+    # there (it overrides the explain instruction and makes the model emit just the move).
+    sys_msg = ("You are a strong chess player and teacher." if explain
+               else "You are a precise chess engine. You always reply with a single legal move.")
+
     def _make_player(ptype, color):
         if ptype in (PlayerType.LLM_WHITE, PlayerType.LLM_BLACK):
             return GameAgent(
                 name="Player_White" if color == "white" else "Player_Black",
-                system_message="You are a precise chess engine. You always reply with a single legal move.",
+                system_message=sys_msg,
                 llm_config=llm_config_white if color == "white" else llm_config_black,
                 is_termination_msg=is_termination_message,
                 human_input_mode="NEVER", dialog_turn_delay=0,
@@ -793,20 +799,21 @@ def run_simple(
 
     def _llm_call(player, messages):
         """One completion through the agent's client (tracks usage + reasoning + retries).
-        Returns (content, prompt_tokens, completion_tokens)."""
+        Returns (content, prompt_tokens, completion_tokens, elapsed_seconds)."""
         for attempt in range(player.max_retries + 1):
             try:
                 t0 = time.time()
                 player._last_reasoning = None
                 resp = player.client.create(messages=messages)
-                player.accumulated_reply_time_seconds += time.time() - t0
+                elapsed = time.time() - t0
+                player.accumulated_reply_time_seconds += elapsed
                 player._emit_reasoning()
                 choice = (getattr(resp, "choices", None) or [None])[0]
                 content = getattr(getattr(choice, "message", None), "content", "") or ""
                 usage = getattr(resp, "usage", None)
                 pt = int(getattr(usage, "prompt_tokens", 0) or 0)
                 ct = int(getattr(usage, "completion_tokens", 0) or 0)
-                return content, pt, ct
+                return content, pt, ct, elapsed
             except Exception as e:
                 if attempt < player.max_retries and is_retryable_error(e):
                     print(f"\033[93mAPI error (simple) attempt {attempt+1} for {player.name}: {e}\033[0m")
@@ -844,13 +851,15 @@ def run_simple(
             )
             print(f"\n================ PROMPT -> {player.name} ({color}) ================")
             print(user, flush=True)
-            text, pt, ct = _llm_call(player, [
+            text, pt, ct, secs = _llm_call(player, [
                 {"role": "system", "content": player.system_message},
                 {"role": "user", "content": user},
             ])
+            # Full model response (includes the written explanation for the -explain variants).
             print(f"---------------- RESPONSE <- {player.name} ----------------")
             print(text)
-            print(f"[tokens] prompt={pt}  completion={ct}  total={pt + ct}", flush=True)
+            print(f"[tokens] prompt={pt}  completion={ct}  total={pt + ct}  [time] {secs:.1f}s",
+                  flush=True)
             mv = _resolve(text)
             if mv:
                 return mv
