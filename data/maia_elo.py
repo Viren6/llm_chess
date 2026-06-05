@@ -211,7 +211,11 @@ def collect(logs_root):
         elo = _maia_elo_for_run(dirpath, agg)
         if llm_is_white is None or elo is None:
             continue
-        model = _model_key(dirpath)
+        # Separate the token-lean 'simple' harness from the standard multi-turn one: same model
+        # folder, different prompt protocol -> different rows (tagged " (simple)").
+        slug = _model_key(dirpath)
+        ptype = str(agg.get("prompt_type", "standard")).lower()
+        model = slug if ptype != "simple" else f"{slug} (simple)"
 
         if _game_errored(dirpath, files):  # drop infra-error games (would count as spurious draws)
             errored[model] = errored.get(model, 0) + 1
@@ -307,11 +311,15 @@ def build_rows(data, usage, anchors=None, warn=True):
         R, se = fit_elo(opp_elos, Ns, Ss)
         ct, mv = _usage_sum(usage, model, anchors)
         tpm = (ct / mv) if mv else float("nan")
-        price = PRICE_PER_MTOK.get(model)  # $/1M completion tokens
+        # REASONING_SUFFIX/PRICE_PER_MTOK are keyed by the raw model slug, not the " (simple)" tag.
+        is_simple = model.endswith(" (simple)")
+        slug = model[:-len(" (simple)")] if is_simple else model
+        price = PRICE_PER_MTOK.get(slug)  # $/1M completion tokens
         dpm = (tpm * price / 1e6) if (price is not None and tpm == tpm) else float("nan")
+        display_model = slug + REASONING_SUFFIX.get(slug, "") + (" (simple)" if is_simple else "")
         rows.append({
             "model": model,
-            "display_model": model + REASONING_SUFFIX.get(model, ""),
+            "display_model": display_model,
             "_R": R, "_se": se,                              # numeric, for ranking + cfs
             "balanced_games": balanced_games,
             "_tpm": tpm,

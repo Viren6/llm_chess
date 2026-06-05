@@ -143,7 +143,10 @@ def _worker(args):
     cfg_w, cfg_b = get_llms(white_hyperparams=hp, black_hyperparams=hp)
 
     os.makedirs(args.out, exist_ok=True)
-    stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
+    if getattr(args, "prompt", "standard") == "simple":
+        stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
+    else:
+        stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
 
     winner = stats.get("winner")
     agg = {"total_games": 1, "white_wins": 0, "black_wins": 0, "draws": 0}
@@ -153,6 +156,7 @@ def _worker(args):
         agg["black_wins"] = 1
     else:
         agg["draws"] = 1
+    agg["prompt_type"] = stats.get("prompt_type", "standard")  # 'simple' = single-prompt-per-move harness
     agg["player_white"] = {"name": pw.name, "model": _model_of(pw)}
     agg["player_black"] = {"name": pb.name, "model": _model_of(pb)}
     with open(os.path.join(args.out, "_aggregate_results.json"), "w", encoding="utf-8") as f:
@@ -336,6 +340,7 @@ def _launch(args):
                "--elo", str(elo), "--color", color, "--socket", servers[elo][0],
                "--out", folder]
         cmd += ["--thinking"] if args.thinking else ["--no-thinking"]
+        cmd += ["--prompt", args.prompt]
         if args.llm_temperature is not None:
             cmd += ["--llm-temperature", str(args.llm_temperature)]
         if args.provider is not None:
@@ -372,6 +377,9 @@ def main():
     ap.add_argument("--socket")
     ap.add_argument("--out")
     # launcher:
+    ap.add_argument("--prompt", choices=["standard", "simple"], default="standard",
+                    help="game harness: 'standard' multi-turn dialog, or 'simple' = one stateless "
+                         "prompt per move (board+legal moves -> make_move) for far lower token use")
     ap.add_argument("--elos", type=int, nargs="+", default=MAIA_ELOS)
     ap.add_argument("--reps", type=int, default=1, help="games per color per anchor")
     ap.add_argument("--colors", choices=["both", "white", "black"], default="both")

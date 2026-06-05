@@ -1,5 +1,6 @@
 import time
 import traceback
+import re
 import chess
 from typing import Any, Dict, Tuple
 from enum import Enum
@@ -12,6 +13,8 @@ from custom_agents import (
     ChessEngineMaiaAgent,
     NonGameAgent,
     build_termination_predicate,
+    extract_message_text,
+    is_retryable_error,
 )
 from utils import calculate_material_count, generate_game_stats, get_llms, display_board, display_store_game_video_and_stats
 # Re-export so existing `from llm_chess import TerminationReason` callers keep working.
@@ -667,6 +670,207 @@ def run(
         pgn_string,
     )
 
+    game_stats["prompt_type"] = "standard"
+    display_store_game_video_and_stats(game_stats, log_dir)
+    return game_stats, player_white, player_black
+
+
+def run_simple(
+    log_dir="_logs",
+    llm_config_white=None,
+    llm_config_black=None,
+) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
+    """Token-lean single-prompt-per-move harness (LLM vs Maia).
+
+    Unlike run()'s multi-turn dialog (separate get_board / get_legal_moves / make_move turns
+    with accumulating history), each LLM move here is ONE stateless request: a single prompt
+    carrying the board + legal moves, and the model replies directly with 'make_move <uci>'.
+    No conversation history is carried between moves, which cuts token usage dramatically.
+    Native thinking / reasoning_effort still applies (it lives in the API config, not the
+    prompt). Stats, token usage, reasoning capture and logging reuse the same machinery as
+    run(); games are tagged prompt_type='simple'.
+    """
+    if llm_config_white is None or llm_config_black is None:
+        WHITE_MODEL_CONFIG = {
+            "hyperparams": default_hyperparams,
+            **({"reasoning_effort": reasoning_effort} if reasoning_effort else {}),
+            **({"thinking_budget": thinking_budget} if thinking_budget else {}),
+        }
+        _w, _b = get_llms(white_hyperparams=WHITE_MODEL_CONFIG,
+                          black_hyperparams=WHITE_MODEL_CONFIG.copy())
+        llm_config_white = llm_config_white or _w
+        llm_config_black = llm_config_black or _b
+
+    time_started = time.strftime("%Y.%m.%d_%H:%M")
+    make_move_action = "make_move"
+    global board, san_moves
+    board.reset()
+    san_moves.clear()
+    material_count = {"white": 0, "black": 0}
+    winner = None
+    reason = None
+
+    is_termination_message = build_termination_predicate(
+        ["move made, switching player", TerminationReason.TOO_MANY_WRONG_ACTIONS.value.lower()]
+    )
+
+    def _make_player(ptype, color):
+        if ptype in (PlayerType.LLM_WHITE, PlayerType.LLM_BLACK):
+            return GameAgent(
+                name="Player_White" if color == "white" else "Player_Black",
+                system_message="You are a precise chess engine. You always reply with a single legal move.",
+                llm_config=llm_config_white if color == "white" else llm_config_black,
+                is_termination_msg=is_termination_message,
+                human_input_mode="NEVER", dialog_turn_delay=0,
+                max_retries=max_api_retries, retry_delay=api_retry_delay,
+            )
+        if ptype == PlayerType.CHESS_ENGINE_MAIA:
+            return ChessEngineMaiaAgent(
+                name="Chess_Engine_Maia_White" if color == "white" else "Chess_Engine_Maia_Black",
+                board=board, make_move_action=make_move_action,
+                maia_path=maia_path, maia_model=maia_model, maia_server=maia_server,
+                elo=maia_elo, use_uci_history=maia_use_uci_history, remove_history=reset_maia_history,
+                temperature=maia_temperature, top_p=maia_top_p,
+                is_termination_msg=is_termination_message, time_limit=maia_time_per_move,
+            )
+        raise ValueError(f"run_simple supports LLM-vs-Maia only; got {ptype} for {color}")
+
+    player_white = _make_player(white_player_type, "white")
+    player_black = _make_player(black_player_type, "black")
+    for p in (player_white, player_black):
+        p.reflections_used = 0
+        p.reflections_used_before_board = 0
+        p.material_count = {"white": 0, "black": 0}
+
+    def _parse_move(text, legal):
+        text = text or ""
+        # prefer the move after the last explicit 'make_move'
+        for cand in reversed(re.findall(r"make_move\s*[:=]?\s*([a-h][1-8][a-h][1-8][nbrq]?)",
+                                        text, re.IGNORECASE)):
+            if cand.lower() in legal:
+                return cand.lower()
+        # fall back to any legal UCI token (last one mentioned)
+        for cand in reversed(re.findall(r"\b([a-h][1-8][a-h][1-8][nbrq]?)\b", text, re.IGNORECASE)):
+            if cand.lower() in legal:
+                return cand.lower()
+        return None
+
+    def _llm_call(player, messages):
+        """One completion through the agent's client (tracks usage + reasoning + retries)."""
+        for attempt in range(player.max_retries + 1):
+            try:
+                t0 = time.time()
+                player._last_reasoning = None
+                resp = player.client.create(messages=messages)
+                player.accumulated_reply_time_seconds += time.time() - t0
+                player._emit_reasoning()
+                choice = (getattr(resp, "choices", None) or [None])[0]
+                return getattr(getattr(choice, "message", None), "content", "") or ""
+            except Exception as e:
+                if attempt < player.max_retries and is_retryable_error(e):
+                    print(f"\033[93mAPI error (simple) attempt {attempt+1} for {player.name}: {e}\033[0m")
+                    time.sleep(player.retry_delay * (2 ** attempt))
+                    continue
+                raise
+
+    def _llm_move(player, color):
+        legal = set(get_legal_moves().split(","))
+        note = ""
+        for _ in range(max_failed_attempts + 1):
+            user = (
+                f"You are playing chess as {color}. Choose the strongest legal move.\n\n"
+                f"Board:\n{get_current_board()}\n\n"
+                f"FEN: {board.fen()}\n\n"
+                f"Legal moves (UCI): {get_legal_moves()}\n\n"
+                f"{note}"
+                "Reply with your move as the FINAL line, exactly as: make_move <uci>  "
+                "(e.g. make_move e2e4). You may reason first, but the last line must be that."
+            )
+            text = _llm_call(player, [
+                {"role": "system", "content": player.system_message},
+                {"role": "user", "content": user},
+            ])
+            mv = _parse_move(text, legal)
+            if mv:
+                return mv
+            player.wrong_moves += 1
+            note = ("Your previous reply had no legal move. Pick strictly one move from the "
+                    "Legal moves list and end with 'make_move <uci>'.\n")
+        return None
+
+    def _maia_move(player):
+        reply = player.generate_reply(messages=[{"role": "user", "content": "Your move."}])
+        text = reply if isinstance(reply, str) else extract_message_text(reply)
+        m = re.search(r"([a-h][1-8][a-h][1-8][nbrq]?)", text or "", re.IGNORECASE)
+        return m.group(1).lower() if m else None
+
+    try:
+        current_move = 0
+        while current_move < max_game_moves and not reason:
+            for player in (player_white, player_black):
+                player.prep_to_move()
+                if board.is_game_over() or get_legal_moves() is None:
+                    break
+                if isinstance(player, ChessEngineMaiaAgent):
+                    mv = _maia_move(player)
+                else:
+                    mv = _llm_move(player, "white" if player is player_white else "black")
+
+                if mv is None:
+                    winner = player_black.name if player is player_white else player_white.name
+                    reason = TerminationReason.TOO_MANY_WRONG_ACTIONS.value
+                    break
+
+                make_move(mv)
+                player.make_move_count += 1
+                current_move += 1
+                mw, mb = calculate_material_count(board)
+                material_count["white"], material_count["black"] = mw, mb
+                print(f"\033[94mMADE MOVE {current_move}: {player.name} {mv}\033[0m", flush=True)
+
+                if board.is_game_over():
+                    if board.is_checkmate():
+                        winner = player_black.name if board.turn else player_white.name
+                        reason = TerminationReason.CHECKMATE.value
+                    elif board.is_stalemate():
+                        winner, reason = "NONE", TerminationReason.STALEMATE.value
+                    elif board.is_insufficient_material():
+                        winner, reason = "NONE", TerminationReason.INSUFFICIENT_MATERIAL.value
+                    elif board.is_seventyfive_moves():
+                        winner, reason = "NONE", TerminationReason.SEVENTYFIVE_MOVES.value
+                    elif board.is_fivefold_repetition():
+                        winner, reason = "NONE", TerminationReason.FIVEFOLD_REPETITION.value
+                    else:
+                        winner, reason = "NONE", TerminationReason.UNKNOWN_ISSUE.value
+                elif current_move >= max_game_moves:
+                    winner, reason = "NONE", TerminationReason.MAX_MOVES.value
+                if reason:
+                    break
+    except Exception as e:
+        print("\033[91mExecution was halted due to error.\033[0m")
+        print(f"Exception details: {e}")
+        traceback.print_exc()
+        winner, reason = "NONE", TerminationReason.ERROR.value
+    finally:
+        for p in (player_white, player_black):
+            if isinstance(p, ChessEngineMaiaAgent):
+                p.close()
+
+    # PGN (same format as run())
+    result = "1/2-1/2" if winner == "NONE" else ("1-0" if winner == player_white.name else
+                                                 ("0-1" if winner == player_black.name else "*"))
+    pgn_header = ("[Event \"Chess Game\"]\n" f"[Date \"{time.strftime('%Y.%m.%d')}\"]\n"
+                  "[White \"Player White\"]\n[Black \"Player Black\"]\n" f"[Result \"{result}\"]\n\n")
+    pgn_moves = ""
+    for i, mv in enumerate(san_moves):
+        pgn_moves += (f"{(i // 2) + 1}. {mv} " if i % 2 == 0 else f"{mv} ")
+        if i > 0 and i % 10 == 9:
+            pgn_moves += "\n"
+    pgn_string = pgn_header + pgn_moves + f" {result}"
+
+    game_stats = generate_game_stats(time_started, winner, reason, current_move,
+                                     player_white, player_black, material_count, pgn_string)
+    game_stats["prompt_type"] = "simple"
     display_store_game_video_and_stats(game_stats, log_dir)
     return game_stats, player_white, player_black
 
