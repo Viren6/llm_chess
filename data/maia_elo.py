@@ -37,7 +37,13 @@ REASONING_SUFFIX = {
     "google-gemini-3.1-pro-preview": "-high",
     "google-gemini-3.5-flash": "-high",
     "deepseek-v4-pro": "-high",
-    "openai-gpt-5.5": "-xhigh",
+    "openai-gpt-5.5": "-xhigh",   # gpt-5.5 (both OpenRouter and official-OpenAI routes, merged)
+}
+
+# Different folder slugs for the SAME model (different API route) -> merge into one row.
+# OpenAI-direct writes a "gpt-5.5" folder; OpenRouter writes "openai-gpt-5.5".
+CANONICAL_SLUG = {
+    "gpt-5.5": "openai-gpt-5.5",
 }
 
 # Output price per 1M completion tokens, per model — drives the $/move column
@@ -48,7 +54,7 @@ PRICE_PER_MTOK = {
     "google-gemma-4-31B-it": 0.32,
     "Qwen-Qwen3.6-27B": 3.20,
     "google-gemini-3.5-flash": 4.50,
-    "openai-gpt-5.5": 15.00,
+    "openai-gpt-5.5": 15.00,   # gpt-5.5 flex output $/1M (both routes use the merged key)
 }
 
 
@@ -214,6 +220,7 @@ def collect(logs_root):
         # Separate the token-lean 'simple' harness from the standard multi-turn one: same model
         # folder, different prompt protocol -> different rows (tagged " (simple)").
         slug = _model_key(dirpath)
+        slug = CANONICAL_SLUG.get(slug, slug)  # merge alternate API-route folders for the same model
         ptype = str(agg.get("prompt_type", "standard")).lower()
         model = slug if ptype != "simple" else f"{slug} (simple)"
 

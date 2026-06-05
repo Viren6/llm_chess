@@ -33,8 +33,22 @@ import subprocess
 import sys
 import time
 
+import logging
+
 import llm_chess
 from utils import get_llms
+
+
+# autogen logs a WARNING for every call whose model isn't in its hardcoded price table
+# ("Model X is not found. The cost will be 0. ... add field {'price': ...}"). We don't use
+# autogen's cost tracking (we compute ¢/move ourselves), so it's pure noise in every
+# output.txt — drop just that message. Set at import so forked/spawned workers inherit it.
+class _DropCostNoise(logging.Filter):
+    def filter(self, record):
+        return "is not found. The cost will be 0" not in record.getMessage()
+
+
+logging.getLogger("autogen.oai.client").addFilter(_DropCostNoise())
 
 MAIA_ELOS = [600, 800, 1000, 1200, 1400]
 MAIA = llm_chess.PlayerType.CHESS_ENGINE_MAIA

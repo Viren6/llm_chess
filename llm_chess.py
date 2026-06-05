@@ -756,7 +756,8 @@ def run_simple(
         return None
 
     def _llm_call(player, messages):
-        """One completion through the agent's client (tracks usage + reasoning + retries)."""
+        """One completion through the agent's client (tracks usage + reasoning + retries).
+        Returns (content, prompt_tokens, completion_tokens)."""
         for attempt in range(player.max_retries + 1):
             try:
                 t0 = time.time()
@@ -765,7 +766,11 @@ def run_simple(
                 player.accumulated_reply_time_seconds += time.time() - t0
                 player._emit_reasoning()
                 choice = (getattr(resp, "choices", None) or [None])[0]
-                return getattr(getattr(choice, "message", None), "content", "") or ""
+                content = getattr(getattr(choice, "message", None), "content", "") or ""
+                usage = getattr(resp, "usage", None)
+                pt = int(getattr(usage, "prompt_tokens", 0) or 0)
+                ct = int(getattr(usage, "completion_tokens", 0) or 0)
+                return content, pt, ct
             except Exception as e:
                 if attempt < player.max_retries and is_retryable_error(e):
                     print(f"\033[93mAPI error (simple) attempt {attempt+1} for {player.name}: {e}\033[0m")
@@ -786,10 +791,15 @@ def run_simple(
                 "Reply with your move as the FINAL line, exactly as: make_move <uci>  "
                 "(e.g. make_move e2e4). You may reason first, but the last line must be that."
             )
-            text = _llm_call(player, [
+            print(f"\n================ PROMPT -> {player.name} ({color}) ================")
+            print(user, flush=True)
+            text, pt, ct = _llm_call(player, [
                 {"role": "system", "content": player.system_message},
                 {"role": "user", "content": user},
             ])
+            print(f"---------------- RESPONSE <- {player.name} ----------------")
+            print(text)
+            print(f"[tokens] prompt={pt}  completion={ct}  total={pt + ct}", flush=True)
             mv = _parse_move(text, legal)
             if mv:
                 return mv
