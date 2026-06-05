@@ -158,10 +158,11 @@ def _worker(args):
 
     os.makedirs(args.out, exist_ok=True)
     prompt_mode = getattr(args, "prompt", "standard")
-    if prompt_mode in ("simple", "simple-sans"):
-        notation = "san" if prompt_mode == "simple-sans" else "uci"
+    if prompt_mode in ("simple", "simple-sans", "simple-explain", "simple-sans-explain"):
+        notation = "san" if "sans" in prompt_mode else "uci"
+        explain = prompt_mode.endswith("explain")
         stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
-                                             llm_config_black=cfg_b, notation=notation)
+                                             llm_config_black=cfg_b, notation=notation, explain=explain)
     else:
         stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
 
@@ -399,10 +400,13 @@ def main():
     ap.add_argument("--socket")
     ap.add_argument("--out")
     # launcher:
-    ap.add_argument("--prompt", choices=["standard", "simple", "simple-sans"], default="standard",
+    ap.add_argument("--prompt",
+                    choices=["standard", "simple", "simple-sans", "simple-explain", "simple-sans-explain"],
+                    default="standard",
                     help="game harness: 'standard' multi-turn dialog; 'simple' = one stateless "
                          "prompt per move (board+legal moves -> make_move, UCI); 'simple-sans' = "
-                         "same but SAN notation (e4, Nf3) which models tend to handle more naturally")
+                         "same but SAN notation; '*-explain' = adds a written move rationale and "
+                         "signed position eval before the move (UCI or SAN)")
     ap.add_argument("--elos", type=int, nargs="+", default=MAIA_ELOS)
     ap.add_argument("--reps", type=int, default=1, help="games per color per anchor")
     ap.add_argument("--colors", choices=["both", "white", "black"], default="both")

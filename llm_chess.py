@@ -680,6 +680,7 @@ def run_simple(
     llm_config_white=None,
     llm_config_black=None,
     notation="uci",
+    explain=False,
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
     """Token-lean single-prompt-per-move harness (LLM vs Maia).
 
@@ -692,8 +693,14 @@ def run_simple(
 
     notation: 'uci' (e2e4, g1f3) or 'san' (e4, Nf3). SAN is the notation virtually all chess
     text uses, so models tend to handle it more naturally. The legal-move list is given in the
-    chosen notation and the move is parsed/validated the same way. Games are tagged
-    prompt_type='simple' (uci) or 'simple-sans' (san) so the table separates them.
+    chosen notation and the move is parsed/validated the same way.
+
+    explain: if True, the prompt also asks the model to WRITE (in its visible answer, ~2 short
+    paragraphs / ~300 words, intermediate level) why it prefers its move and a signed evaluation
+    of the resulting position (+ White, - Black) with the factors behind it, before the move line.
+
+    Games are tagged prompt_type 'simple' (uci) / 'simple-sans' (san), with a '-explain' suffix
+    when explain is on, so the table separates them.
     """
     if llm_config_white is None or llm_config_black is None:
         WHITE_MODEL_CONFIG = {
@@ -810,6 +817,22 @@ def run_simple(
     def _llm_move(player, color):
         fmt = "SAN" if san_mode else "UCI"
         example = "make_move Nf3" if san_mode else "make_move e2e4"
+        if explain:
+            instruction = (
+                "Play the strongest move you can find. Your written explanation will be used to "
+                "teach chess to others, so once you've decided, write around 300 words, broken "
+                "into paragraphs: first explain why you chose your move over the main alternatives, "
+                "then give your evaluation of the resulting position as a single number — positive "
+                "favours White, negative favours Black, in pawns — and the key factors behind it. "
+                f"Finish with your move on its own final line, exactly as: make_move <{fmt}> "
+                f"(e.g. {example}), taken verbatim from the Legal moves list."
+            )
+        else:
+            instruction = (
+                f"Reply with your move as the FINAL line, exactly as: make_move <{fmt}>  "
+                f"(e.g. {example}). Pick a move verbatim from the Legal moves list. "
+                "You may reason first, but the last line must be that."
+            )
         note = ""
         for _ in range(max_failed_attempts + 1):
             user = (
@@ -817,10 +840,7 @@ def run_simple(
                 f"Board:\n{get_current_board()}\n\n"
                 f"FEN: {board.fen()}\n\n"
                 f"Legal moves ({fmt}): {_legal_for_prompt()}\n\n"
-                f"{note}"
-                f"Reply with your move as the FINAL line, exactly as: make_move <{fmt}>  "
-                f"(e.g. {example}). Pick a move verbatim from the Legal moves list. "
-                "You may reason first, but the last line must be that."
+                f"{note}{instruction}"
             )
             print(f"\n================ PROMPT -> {player.name} ({color}) ================")
             print(user, flush=True)
@@ -911,7 +931,8 @@ def run_simple(
 
     game_stats = generate_game_stats(time_started, winner, reason, current_move,
                                      player_white, player_black, material_count, pgn_string)
-    game_stats["prompt_type"] = "simple" if notation == "uci" else "simple-sans"
+    base_ptype = "simple-sans" if notation == "san" else "simple"
+    game_stats["prompt_type"] = base_ptype + ("-explain" if explain else "")
     display_store_game_video_and_stats(game_stats, log_dir)
     return game_stats, player_white, player_black
 
