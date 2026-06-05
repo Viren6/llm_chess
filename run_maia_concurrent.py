@@ -157,8 +157,11 @@ def _worker(args):
     cfg_w, cfg_b = get_llms(white_hyperparams=hp, black_hyperparams=hp)
 
     os.makedirs(args.out, exist_ok=True)
-    if getattr(args, "prompt", "standard") == "simple":
-        stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
+    prompt_mode = getattr(args, "prompt", "standard")
+    if prompt_mode in ("simple", "simple-sans"):
+        notation = "san" if prompt_mode == "simple-sans" else "uci"
+        stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
+                                             llm_config_black=cfg_b, notation=notation)
     else:
         stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
 
@@ -391,9 +394,10 @@ def main():
     ap.add_argument("--socket")
     ap.add_argument("--out")
     # launcher:
-    ap.add_argument("--prompt", choices=["standard", "simple"], default="standard",
-                    help="game harness: 'standard' multi-turn dialog, or 'simple' = one stateless "
-                         "prompt per move (board+legal moves -> make_move) for far lower token use")
+    ap.add_argument("--prompt", choices=["standard", "simple", "simple-sans"], default="standard",
+                    help="game harness: 'standard' multi-turn dialog; 'simple' = one stateless "
+                         "prompt per move (board+legal moves -> make_move, UCI); 'simple-sans' = "
+                         "same but SAN notation (e4, Nf3) which models tend to handle more naturally")
     ap.add_argument("--elos", type=int, nargs="+", default=MAIA_ELOS)
     ap.add_argument("--reps", type=int, default=1, help="games per color per anchor")
     ap.add_argument("--colors", choices=["both", "white", "black"], default="both")

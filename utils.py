@@ -240,6 +240,11 @@ def get_llms(
 
     def _build_config(kind: str, key: str, model_params: Dict) -> Dict:
         provider_conf = _provider_base_config(kind, key)
+        # Give every entry an explicit (zero) price so autogen never logs its noisy
+        # "Model X is not found. The cost will be 0..." warning for models absent from its
+        # hardcoded price table. We don't use autogen's cost tracking (we compute ¢/move
+        # ourselves), so a [0, 0] price is harmless and silences it at the source.
+        provider_conf.setdefault("price", [0, 0])
         # Apply provider overrides if any
         if model_params and "provider_overrides" in model_params:
             provider_conf.update(model_params["provider_overrides"])

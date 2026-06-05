@@ -679,16 +679,21 @@ def run_simple(
     log_dir="_logs",
     llm_config_white=None,
     llm_config_black=None,
+    notation="uci",
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
     """Token-lean single-prompt-per-move harness (LLM vs Maia).
 
     Unlike run()'s multi-turn dialog (separate get_board / get_legal_moves / make_move turns
     with accumulating history), each LLM move here is ONE stateless request: a single prompt
-    carrying the board + legal moves, and the model replies directly with 'make_move <uci>'.
+    carrying the board + legal moves, and the model replies directly with 'make_move <move>'.
     No conversation history is carried between moves, which cuts token usage dramatically.
     Native thinking / reasoning_effort still applies (it lives in the API config, not the
-    prompt). Stats, token usage, reasoning capture and logging reuse the same machinery as
-    run(); games are tagged prompt_type='simple'.
+    prompt). Stats, token usage, reasoning capture and logging reuse the same machinery as run().
+
+    notation: 'uci' (e2e4, g1f3) or 'san' (e4, Nf3). SAN is the notation virtually all chess
+    text uses, so models tend to handle it more naturally. The legal-move list is given in the
+    chosen notation and the move is parsed/validated the same way. Games are tagged
+    prompt_type='simple' (uci) or 'simple-sans' (san) so the table separates them.
     """
     if llm_config_white is None or llm_config_black is None:
         WHITE_MODEL_CONFIG = {
@@ -742,17 +747,41 @@ def run_simple(
         p.reflections_used_before_board = 0
         p.material_count = {"white": 0, "black": 0}
 
-    def _parse_move(text, legal):
+    san_mode = (notation == "san")
+
+    def _norm_san(s):
+        # normalize a SAN token for matching: unify castling zeros (0-0 -> O-O), drop +/#/!/? glyphs
+        return re.sub(r"[+#!?]+$", "", (s or "").strip().replace("0", "O"))
+
+    def _legal_for_prompt():
+        if san_mode:
+            return ", ".join(board.san(m) for m in board.legal_moves)
+        return get_legal_moves()
+
+    def _resolve(text):
+        """Return the chosen move as UCI (what make_move() needs), or None."""
         text = text or ""
-        # prefer the move after the last explicit 'make_move'
-        for cand in reversed(re.findall(r"make_move\s*[:=]?\s*([a-h][1-8][a-h][1-8][nbrq]?)",
-                                        text, re.IGNORECASE)):
-            if cand.lower() in legal:
-                return cand.lower()
-        # fall back to any legal UCI token (last one mentioned)
-        for cand in reversed(re.findall(r"\b([a-h][1-8][a-h][1-8][nbrq]?)\b", text, re.IGNORECASE)):
-            if cand.lower() in legal:
-                return cand.lower()
+        if san_mode:
+            san_map = {_norm_san(board.san(m)): m.uci() for m in board.legal_moves}
+            # prefer the token after the last 'make_move'
+            for c in reversed(re.findall(r"make_move\s*[:=]?\s*([^\s,;]+)", text, re.IGNORECASE)):
+                u = san_map.get(_norm_san(c))
+                if u:
+                    return u
+            # fall back to any SAN-looking token that matches a legal move (last one)
+            for c in reversed(re.findall(r"[A-Za-z][A-Za-z0-9=+#x\-]{1,6}", text)):
+                u = san_map.get(_norm_san(c))
+                if u:
+                    return u
+            return None
+        legal = set(get_legal_moves().split(","))
+        for c in reversed(re.findall(r"make_move\s*[:=]?\s*([a-h][1-8][a-h][1-8][nbrq]?)",
+                                     text, re.IGNORECASE)):
+            if c.lower() in legal:
+                return c.lower()
+        for c in reversed(re.findall(r"\b([a-h][1-8][a-h][1-8][nbrq]?)\b", text, re.IGNORECASE)):
+            if c.lower() in legal:
+                return c.lower()
         return None
 
     def _llm_call(player, messages):
@@ -779,17 +808,19 @@ def run_simple(
                 raise
 
     def _llm_move(player, color):
-        legal = set(get_legal_moves().split(","))
+        fmt = "SAN" if san_mode else "UCI"
+        example = "make_move Nf3" if san_mode else "make_move e2e4"
         note = ""
         for _ in range(max_failed_attempts + 1):
             user = (
                 f"You are playing chess as {color}. Choose the strongest legal move.\n\n"
                 f"Board:\n{get_current_board()}\n\n"
                 f"FEN: {board.fen()}\n\n"
-                f"Legal moves (UCI): {get_legal_moves()}\n\n"
+                f"Legal moves ({fmt}): {_legal_for_prompt()}\n\n"
                 f"{note}"
-                "Reply with your move as the FINAL line, exactly as: make_move <uci>  "
-                "(e.g. make_move e2e4). You may reason first, but the last line must be that."
+                f"Reply with your move as the FINAL line, exactly as: make_move <{fmt}>  "
+                f"(e.g. {example}). Pick a move verbatim from the Legal moves list. "
+                "You may reason first, but the last line must be that."
             )
             print(f"\n================ PROMPT -> {player.name} ({color}) ================")
             print(user, flush=True)
@@ -800,12 +831,12 @@ def run_simple(
             print(f"---------------- RESPONSE <- {player.name} ----------------")
             print(text)
             print(f"[tokens] prompt={pt}  completion={ct}  total={pt + ct}", flush=True)
-            mv = _parse_move(text, legal)
+            mv = _resolve(text)
             if mv:
                 return mv
             player.wrong_moves += 1
-            note = ("Your previous reply had no legal move. Pick strictly one move from the "
-                    "Legal moves list and end with 'make_move <uci>'.\n")
+            note = (f"Your previous reply had no legal move. Pick strictly one move ({fmt}) from "
+                    f"the Legal moves list and end with 'make_move <{fmt}>'.\n")
         return None
 
     def _maia_move(player):
@@ -880,7 +911,7 @@ def run_simple(
 
     game_stats = generate_game_stats(time_started, winner, reason, current_move,
                                      player_white, player_black, material_count, pgn_string)
-    game_stats["prompt_type"] = "simple"
+    game_stats["prompt_type"] = "simple" if notation == "uci" else "simple-sans"
     display_store_game_video_and_stats(game_stats, log_dir)
     return game_stats, player_white, player_black
 

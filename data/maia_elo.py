@@ -222,7 +222,8 @@ def collect(logs_root):
         slug = _model_key(dirpath)
         slug = CANONICAL_SLUG.get(slug, slug)  # merge alternate API-route folders for the same model
         ptype = str(agg.get("prompt_type", "standard")).lower()
-        model = slug if ptype != "simple" else f"{slug} (simple)"
+        # Separate harness variants into their own rows: standard, simple (UCI), simple-sans (SAN).
+        model = slug if ptype == "standard" else f"{slug} ({ptype})"
 
         if _game_errored(dirpath, files):  # drop infra-error games (would count as spurious draws)
             errored[model] = errored.get(model, 0) + 1
@@ -318,12 +319,15 @@ def build_rows(data, usage, anchors=None, warn=True):
         R, se = fit_elo(opp_elos, Ns, Ss)
         ct, mv = _usage_sum(usage, model, anchors)
         tpm = (ct / mv) if mv else float("nan")
-        # REASONING_SUFFIX/PRICE_PER_MTOK are keyed by the raw model slug, not the " (simple)" tag.
-        is_simple = model.endswith(" (simple)")
-        slug = model[:-len(" (simple)")] if is_simple else model
+        # REASONING_SUFFIX/PRICE_PER_MTOK are keyed by the raw model slug, not the " (<ptype>)" tag.
+        if model.endswith(")") and " (" in model:
+            i = model.rindex(" (")
+            slug, tag = model[:i], model[i:]   # tag e.g. " (simple)" / " (simple-sans)"
+        else:
+            slug, tag = model, ""
         price = PRICE_PER_MTOK.get(slug)  # $/1M completion tokens
         dpm = (tpm * price / 1e6) if (price is not None and tpm == tpm) else float("nan")
-        display_model = slug + REASONING_SUFFIX.get(slug, "") + (" (simple)" if is_simple else "")
+        display_model = slug + REASONING_SUFFIX.get(slug, "") + tag
         rows.append({
             "model": model,
             "display_model": display_model,
