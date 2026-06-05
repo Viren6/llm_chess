@@ -27,25 +27,35 @@ def _quit_open_maia_engines():
 
 
 def is_retryable_error(exception) -> bool:
-    """Check if an exception is retryable based on its error message."""
+    """Check if an exception is retryable based on its type / HTTP status / message."""
     import json as _json
     # A transient malformed/truncated response body (provider returned non-JSON) surfaces as
     # a JSONDecodeError ("Expecting value: line .. column ..") — retry rather than abort the game.
     if isinstance(exception, _json.JSONDecodeError):
         return True
-    # Check specific error messages, LOWER CASE
+    # HTTP status is the robust signal: any 5xx server error (500 InternalServerError, 502, 503,
+    # 504) or 429 rate-limit is transient. openai / openai-compatible SDK errors carry status_code.
+    sc = getattr(exception, "status_code", None)
+    if isinstance(sc, int) and (sc == 429 or 500 <= sc < 600):
+        return True
+    # Check specific error messages, LOWER CASE (covers errors without a status_code)
     error_message = str(exception).lower()
     retryable_messages = [
         "service is not available",
+        "service unavailable",
         "rate limit",
         "timeout",
         "connection error",
         "temporarily unavailable",
         "try again later",
-        # "internal server error",
+        "internal server error",  # transient 5xx (bounded retries make this safe)
         "bad gateway",
+        "overloaded",
         "is currently over capacity",  # Groq
         "error code: 429",
+        "error code: 500",
+        "error code: 502",
+        "error code: 503",
         "limit exceeded",  # Cerebras
         "expecting value",  # json.JSONDecodeError text, in case it arrives wrapped as a str
     ]
