@@ -162,7 +162,9 @@ def _worker(args):
         notation = "san" if "sans" in prompt_mode else "uci"
         explain = prompt_mode.endswith("explain")
         stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
-                                             llm_config_black=cfg_b, notation=notation, explain=explain)
+                                             llm_config_black=cfg_b, notation=notation, explain=explain,
+                                             order_socket=getattr(args, "sf_socket", None),
+                                             order_nodes=getattr(args, "sf_nodes", None))
     else:
         stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
 
@@ -238,6 +240,33 @@ def _stop_servers(servers):
             os.unlink(sock)
         except Exception:
             pass
+
+
+def _start_sf_server(args):
+    """Launch ONE shared Stockfish ordering server for the whole run; return (socket, Popen)."""
+    sock = f"/tmp/sf-order-{os.getpid()}.sock"
+    log = open("stockfish_server.log", "w")
+    cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "stockfish_server.py"),
+           "--socket", sock, "--sf-path", args.sf_path, "--hash", str(args.sf_hash),
+           "--threads", str(args.sf_threads), "--nodes", str(args.sf_nodes)]
+    proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
+    deadline = time.time() + args.server_ready_timeout
+    while True:
+        if proc.poll() is not None:
+            raise RuntimeError("Stockfish server exited early; see stockfish_server.log")
+        try:
+            c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            c.settimeout(2)
+            c.connect(sock)
+            c.close()
+            break
+        except OSError:
+            if time.time() > deadline:
+                raise RuntimeError("Stockfish server not ready; see stockfish_server.log")
+            time.sleep(0.3)
+    print(f"[server] stockfish-order ready ({sock}, {args.sf_nodes} nodes/move, "
+          f"hash={args.sf_hash}MB, threads={args.sf_threads})", flush=True)
+    return sock, proc
 
 
 # --------------------------------------------------------------------------- worker dispatch
@@ -348,6 +377,10 @@ def _launch(args):
           f"concurrency={args.concurrency}, mode={mode}, model={model_slug}", flush=True)
 
     servers = _start_servers(args.elos, args)
+    sf_proc = None
+    if args.sf_order:
+        sf_sock, sf_proc = _start_sf_server(args)
+        args.sf_socket = sf_sock  # fork workers inherit this via copy.copy(args)
     self_path = os.path.abspath(__file__)
 
     def folder_for(elo, color, idx):
@@ -364,6 +397,8 @@ def _launch(args):
                "--out", folder]
         cmd += ["--thinking"] if args.thinking else ["--no-thinking"]
         cmd += ["--prompt", args.prompt]
+        if args.sf_order:
+            cmd += ["--sf-socket", sf_sock, "--sf-nodes", str(args.sf_nodes)]
         if args.llm_temperature is not None:
             cmd += ["--llm-temperature", str(args.llm_temperature)]
         if args.provider is not None:
@@ -388,6 +423,15 @@ def _launch(args):
             _run_forked(args, jobs, servers, folder_for)
     finally:
         _stop_servers(servers)
+        if sf_proc is not None:
+            try:
+                sf_proc.send_signal(signal.SIGTERM)
+                sf_proc.wait(timeout=10)
+            except Exception:
+                try:
+                    sf_proc.kill()
+                except Exception:
+                    pass
     print("=== all games complete ===  now run: python data/maia_elo.py", flush=True)
 
 
@@ -399,6 +443,7 @@ def main():
     ap.add_argument("--color", choices=["white", "black"])
     ap.add_argument("--socket")
     ap.add_argument("--out")
+    ap.add_argument("--sf-socket", default=None, help=argparse.SUPPRESS)  # worker-internal
     # launcher:
     ap.add_argument("--prompt",
                     choices=["standard", "simple", "simple-sans", "simple-explain", "simple-sans-explain"],
@@ -424,6 +469,18 @@ def main():
     ap.add_argument("--maia-top-p", type=float, default=1.0)
     ap.add_argument("--maia-time", type=float, default=0.2)
     ap.add_argument("--maia-device", default=None, help="e.g. 'cpu' to keep Maia off the GPU")
+    # Covert Stockfish move-ordering nudge (one shared SF instance for the whole run; every legal
+    # move is searched --sf-nodes nodes with a fresh hash, and the model sees the list pre-sorted
+    # best->worst without being told). Serialised across ALL workers, so it is a throughput cap.
+    ap.add_argument("--sf-order", action="store_true",
+                    help="re-order the legal-move list best->worst with a shared Stockfish 18 "
+                         "(covert nudge; adds a '-sforder' prompt_type). Only affects simple* prompts.")
+    ap.add_argument("--sf-path", default="/workspace/engines/stockfish18")
+    ap.add_argument("--sf-nodes", type=int, default=1_000_000, help="SF nodes per legal move")
+    ap.add_argument("--sf-hash", type=int, default=128, help="SF hash MB (cleared per move)")
+    ap.add_argument("--sf-threads", type=int, default=16,
+                    help="threads the single shared SF instance uses per search (one engine, "
+                         "full-core searches — keeps '1 instance' while staying fast)")
     _add_llm_args(ap)
     args = ap.parse_args()
 

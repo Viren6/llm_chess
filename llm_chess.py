@@ -681,6 +681,8 @@ def run_simple(
     llm_config_black=None,
     notation="uci",
     explain=False,
+    order_socket=None,
+    order_nodes=None,
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
     """Token-lean single-prompt-per-move harness (LLM vs Maia).
 
@@ -698,6 +700,13 @@ def run_simple(
     explain: if True, the prompt also asks the model to WRITE (in its visible answer, ~2 short
     paragraphs / ~300 words, intermediate level) why it prefers its move and a signed evaluation
     of the resulting position (+ White, - Black) with the factors behind it, before the move line.
+
+    order_socket: if set, the legal-move list shown to the model is re-ordered best->worst by a
+    shared Stockfish server (stockfish_server.py) — each legal move searched for `order_nodes`
+    nodes. The model is NOT told the list is sorted (the instruction stays "find the strongest
+    move", plus a nudge to work through the list from the first move onward). This is a covert
+    move-ordering nudge: it steers the model toward strong moves via primacy without handing it
+    the answer/eval (which makes it lazy). Adds a '-sforder' suffix to prompt_type.
 
     Games are tagged prompt_type 'simple' (uci) / 'simple-sans' (san), with a '-explain' suffix
     when explain is on, so the table separates them.
@@ -766,7 +775,29 @@ def run_simple(
         # normalize a SAN token for matching: unify castling zeros (0-0 -> O-O), drop +/#/!/? glyphs
         return re.sub(r"[+#!?]+$", "", (s or "").strip().replace("0", "O"))
 
+    def _render_moves(uci_order):
+        """Render an ordered UCI move list in the prompt's notation (UCI or SAN)."""
+        if san_mode:
+            return ", ".join(board.san(chess.Move.from_uci(u)) for u in uci_order)
+        return ", ".join(uci_order)
+
+    def _ordered_uci():
+        """Stockfish best->worst order of the current legal moves (covert nudge). Falls back to
+        board order if the server is unreachable, so a game never dies on an ordering hiccup."""
+        from stockfish_server import request_order
+        order = request_order(order_socket, board.fen(), nodes=order_nodes)
+        legal = {m.uci() for m in board.legal_moves}
+        # keep only legal moves, then append any legal move the server somehow omitted
+        order = [u for u in order if u in legal]
+        order += [u for u in legal if u not in order]
+        return order
+
     def _legal_for_prompt():
+        if order_socket:
+            try:
+                return _render_moves(_ordered_uci())
+            except Exception as e:  # noqa: BLE001 — never let ordering break the game
+                print(f"\033[93m[sf-order] failed, using board order: {e}\033[0m", flush=True)
         if san_mode:
             return ", ".join(board.san(m) for m in board.legal_moves)
         return get_legal_moves()
@@ -840,13 +871,20 @@ def run_simple(
                 f"(e.g. {example}). Pick a move verbatim from the Legal moves list. "
                 "You may reason first, but the last line must be that."
             )
+        # Resolve the legal-move list ONCE per move (an ordered list costs a Stockfish query per
+        # legal move, so it must not be recomputed on each no-legal-move retry).
+        legal_str = _legal_for_prompt()
+        # Covert nudge: when the list is Stockfish-ordered, tell the model to work down the list
+        # from the top — without revealing it is sorted by strength.
+        order_line = (" Work through the Legal moves in the order given, starting from the first."
+                      if order_socket else "")
         note = ""
         for _ in range(max_failed_attempts + 1):
             user = (
-                f"You are playing chess as {color}. Choose the strongest legal move.\n\n"
+                f"You are playing chess as {color}. Choose the strongest legal move.{order_line}\n\n"
                 f"Board:\n{get_current_board()}\n\n"
                 f"FEN: {board.fen()}\n\n"
-                f"Legal moves ({fmt}): {_legal_for_prompt()}\n\n"
+                f"Legal moves ({fmt}): {legal_str}\n\n"
                 f"{note}{instruction}"
             )
             print(f"\n================ PROMPT -> {player.name} ({color}) ================")
@@ -941,7 +979,8 @@ def run_simple(
     game_stats = generate_game_stats(time_started, winner, reason, current_move,
                                      player_white, player_black, material_count, pgn_string)
     base_ptype = "simple-sans" if notation == "san" else "simple"
-    game_stats["prompt_type"] = base_ptype + ("-explain" if explain else "")
+    game_stats["prompt_type"] = (base_ptype + ("-explain" if explain else "")
+                                 + ("-sforder" if order_socket else ""))
     display_store_game_video_and_stats(game_stats, log_dir)
     return game_stats, player_white, player_black
 
