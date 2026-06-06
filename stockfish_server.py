@@ -63,6 +63,23 @@ def _rank_moves(fen, nodes):
     return ordered, {u: c for u, c in scored}
 
 
+def _eval_root(fen, nodes):
+    """One search of the position; return (best_move_uci, cp) from the side-to-move's POV."""
+    board = chess.Board(fen)
+    info = _ENGINE.analyse(board, chess.engine.Limit(nodes=nodes), game=object())
+    pv = info.get("pv") or []
+    best = pv[0].uci() if pv else None
+    return best, int(info["score"].relative.score(mate_score=_MATE))
+
+
+def _eval_move(fen, move_uci, nodes):
+    """One search restricted to `move_uci`; return cp from the side-to-move's POV."""
+    board = chess.Board(fen)
+    info = _ENGINE.analyse(board, chess.engine.Limit(nodes=nodes),
+                           root_moves=[chess.Move.from_uci(move_uci)], game=object())
+    return int(info["score"].relative.score(mate_score=_MATE))
+
+
 class _Handler(socketserver.StreamRequestHandler):
     def handle(self):
         try:
@@ -71,9 +88,19 @@ class _Handler(socketserver.StreamRequestHandler):
                 return  # bare connect (readiness probe)
             req = json.loads(line.decode())
             nodes = int(req.get("nodes") or _NODES)
-            with _LOCK:  # exactly one engine search at a time, across all workers
-                ordered, scores = _rank_moves(req["fen"], nodes)
-            resp = {"ordered": ordered, "scores": scores}
+            op = req.get("op")
+            if op == "root":            # correction: position eval + best move (1 search)
+                with _LOCK:
+                    best, cp = _eval_root(req["fen"], nodes)
+                resp = {"root_move": best, "root_cp": cp}
+            elif op == "move":          # correction: eval of one specific move (1 search)
+                with _LOCK:
+                    cp = _eval_move(req["fen"], req["move"], nodes)
+                resp = {"cp": cp}
+            else:                       # nudge: rank ALL legal moves (1 search each)
+                with _LOCK:  # exactly one engine search at a time, across all workers
+                    ordered, scores = _rank_moves(req["fen"], nodes)
+                resp = {"ordered": ordered, "scores": scores}
         except Exception as e:  # noqa: BLE001
             resp = {"error": f"{type(e).__name__}: {e}"}
         try:
@@ -87,8 +114,9 @@ class _Server(socketserver.ThreadingUnixStreamServer):
     allow_reuse_address = True
 
 
-def request_order(socket_path: str, fen: str, nodes=None, timeout: float = 1800) -> list:
-    """Client: ask the server to rank the legal moves of `fen`. Returns best→worst UCI list."""
+def request_ranked(socket_path: str, fen: str, nodes=None, timeout: float = 1800):
+    """Client: rank the legal moves of `fen`. Returns (ordered_uci, scores) where scores maps
+    each scored UCI move -> centipawns from the side-to-move's POV (mate = ±1_000_000)."""
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.settimeout(timeout)
     try:
@@ -110,7 +138,51 @@ def request_order(socket_path: str, fen: str, nodes=None, timeout: float = 1800)
     resp = json.loads(buf.decode())
     if "error" in resp:
         raise RuntimeError(resp["error"])
-    return resp["ordered"]
+    return resp["ordered"], resp.get("scores", {})
+
+
+def request_order(socket_path: str, fen: str, nodes=None, timeout: float = 1800) -> list:
+    """Client: ask the server to rank the legal moves of `fen`. Returns best→worst UCI list."""
+    return request_ranked(socket_path, fen, nodes=nodes, timeout=timeout)[0]
+
+
+def _request(socket_path: str, payload: dict, timeout: float = 1800) -> dict:
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.settimeout(timeout)
+    try:
+        s.connect(socket_path)
+        s.sendall((json.dumps(payload) + "\n").encode())
+        buf = b""
+        while not buf.endswith(b"\n"):
+            chunk = s.recv(65536)
+            if not chunk:
+                break
+            buf += chunk
+    finally:
+        s.close()
+    if not buf:
+        raise RuntimeError("empty response from Stockfish server")
+    resp = json.loads(buf.decode())
+    if "error" in resp:
+        raise RuntimeError(resp["error"])
+    return resp
+
+
+def request_root(socket_path: str, fen: str, nodes=None, timeout: float = 1800):
+    """Client (correction): position eval + best move. Returns (best_move_uci, cp) STM-POV."""
+    p = {"op": "root", "fen": fen}
+    if nodes is not None:
+        p["nodes"] = nodes
+    r = _request(socket_path, p, timeout)
+    return r.get("root_move"), r["root_cp"]
+
+
+def request_move_eval(socket_path: str, fen: str, move_uci: str, nodes=None, timeout: float = 1800):
+    """Client (correction): eval of one specific move. Returns cp from the side-to-move's POV."""
+    p = {"op": "move", "fen": fen, "move": move_uci}
+    if nodes is not None:
+        p["nodes"] = nodes
+    return _request(socket_path, p, timeout)["cp"]
 
 
 def main():

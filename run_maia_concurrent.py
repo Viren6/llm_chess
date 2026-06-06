@@ -158,7 +158,14 @@ def _worker(args):
 
     os.makedirs(args.out, exist_ok=True)
     prompt_mode = getattr(args, "prompt", "standard")
-    if prompt_mode in ("simple", "simple-sans", "simple-explain", "simple-sans-explain"):
+    if prompt_mode == "sf-explain-with-correction":
+        stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
+                                             llm_config_black=cfg_b, notation="uci", explain=True,
+                                             correct_socket=getattr(args, "sf_socket", None),
+                                             correct_nodes=getattr(args, "sf_nodes", None),
+                                             correct_pro_model=getattr(args, "correct_pro_model",
+                                                                       "gpt-5.5-pro"))
+    elif prompt_mode in ("simple", "simple-sans", "simple-explain", "simple-sans-explain"):
         notation = "san" if "sans" in prompt_mode else "uci"
         explain = prompt_mode.endswith("explain")
         stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
@@ -378,7 +385,9 @@ def _launch(args):
 
     servers = _start_servers(args.elos, args)
     sf_proc = None
-    if args.sf_order:
+    sf_sock = None
+    need_sf = args.sf_order or args.prompt == "sf-explain-with-correction"
+    if need_sf:
         sf_sock, sf_proc = _start_sf_server(args)
         args.sf_socket = sf_sock  # fork workers inherit this via copy.copy(args)
     self_path = os.path.abspath(__file__)
@@ -397,8 +406,10 @@ def _launch(args):
                "--out", folder]
         cmd += ["--thinking"] if args.thinking else ["--no-thinking"]
         cmd += ["--prompt", args.prompt]
-        if args.sf_order:
+        if need_sf:
             cmd += ["--sf-socket", sf_sock, "--sf-nodes", str(args.sf_nodes)]
+        if args.prompt == "sf-explain-with-correction":
+            cmd += ["--correct-pro-model", args.correct_pro_model]
         if args.llm_temperature is not None:
             cmd += ["--llm-temperature", str(args.llm_temperature)]
         if args.provider is not None:
@@ -446,12 +457,15 @@ def main():
     ap.add_argument("--sf-socket", default=None, help=argparse.SUPPRESS)  # worker-internal
     # launcher:
     ap.add_argument("--prompt",
-                    choices=["standard", "simple", "simple-sans", "simple-explain", "simple-sans-explain"],
+                    choices=["standard", "simple", "simple-sans", "simple-explain", "simple-sans-explain",
+                             "sf-explain-with-correction"],
                     default="standard",
                     help="game harness: 'standard' multi-turn dialog; 'simple' = one stateless "
                          "prompt per move (board+legal moves -> make_move, UCI); 'simple-sans' = "
                          "same but SAN notation; '*-explain' = adds a written move rationale and "
-                         "signed position eval before the move (UCI or SAN)")
+                         "signed position eval before the move (UCI or SAN); "
+                         "'sf-explain-with-correction' = explain (UCI) + Stockfish-checked self-"
+                         "correction: redo blunders / wrong self-evals at xhigh then pro@xhigh")
     ap.add_argument("--elos", type=int, nargs="+", default=MAIA_ELOS)
     ap.add_argument("--reps", type=int, default=1, help="games per color per anchor")
     ap.add_argument("--colors", choices=["both", "white", "black"], default="both")
@@ -481,6 +495,8 @@ def main():
     ap.add_argument("--sf-threads", type=int, default=16,
                     help="threads the single shared SF instance uses per search (one engine, "
                          "full-core searches — keeps '1 instance' while staying fast)")
+    ap.add_argument("--correct-pro-model", default="gpt-5.5-pro",
+                    help="model id for the final escalation tier (xhigh) in sf-explain-with-correction")
     _add_llm_args(ap)
     args = ap.parse_args()
 

@@ -675,6 +675,65 @@ def run(
     return game_stats, player_white, player_black
 
 
+# Win-rate scale for the self-correcting harness. Maps a signed eval (pawns, + favours the
+# referenced side) to a signed winning-chances value in [-1, 1], calibrated so |eval| of
+# 0.25/0.5/1/2/4 pawns -> 12.5/25/50/75/87.5%:  W(a)=0.5a for a<=1, W(a)=1-1/(2a) for a>=1
+# (smooth at a=1). A move/eval is flagged when two evals differ by >= 25% win-rate (0.25). The
+# spec's example boundaries (+0.25->-0.25, +1->+0.5, +2->+1, mate->+2) all sit exactly at 0.25,
+# so the comparison is ">=" (with mate clamped to 100%).
+_WIN_TRIGGER = 0.25
+
+
+def _winrate(pawns: float) -> float:
+    """Signed winning-chances in [-1, 1] for an eval in pawns (sign = favoured side)."""
+    s = 1.0 if pawns >= 0 else -1.0
+    a = abs(pawns)
+    if a >= 100:          # mate / overwhelming -> ~100%
+        w = 1.0
+    elif a <= 1.0:
+        w = 0.5 * a
+    else:
+        w = 1.0 - 1.0 / (2.0 * a)
+    return s * w
+
+
+def _parse_model_eval(text: str):
+    """Extract the model's stated position eval (White-POV pawns) from an 'eval: <n>' line.
+    Returns float or None if not parseable."""
+    if not text:
+        return None
+    matches = re.findall(r"eval\s*[:=]\s*([+-]?\d+(?:\.\d+)?)", text, re.IGNORECASE)
+    if not matches:
+        return None
+    try:
+        return float(matches[-1])  # last labelled eval wins
+    except ValueError:
+        return None
+
+
+class _ResponsesPlayer:
+    """Lightweight stand-in for a GameAgent that calls the OpenAI Responses API directly.
+    Needed for '-pro' reasoning models (e.g. gpt-5.5-pro), which are served only on
+    /v1/responses, and which autogen's chat-completions wrapper can't drive in this version.
+    Exposes just what the simple harness touches: name, system_message, wrong_moves, retries."""
+
+    def __init__(self, name, system_message, model, api_key, base_url, effort, service_tier,
+                 max_retries, retry_delay):
+        from openai import OpenAI
+        self.name = name
+        self.system_message = system_message
+        self.wrong_moves = 0
+        self.tier_label = "pro-xhigh"
+        self.use_responses = True
+        self.accumulated_reply_time_seconds = 0.0
+        self.model = model
+        self.effort = effort
+        self.service_tier = service_tier
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self._client = OpenAI(api_key=api_key, **({"base_url": base_url} if base_url else {}))
+
+
 def run_simple(
     log_dir="_logs",
     llm_config_white=None,
@@ -683,6 +742,9 @@ def run_simple(
     explain=False,
     order_socket=None,
     order_nodes=None,
+    correct_socket=None,
+    correct_nodes=None,
+    correct_pro_model="gpt-5.5-pro",
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
     """Token-lean single-prompt-per-move harness (LLM vs Maia).
 
@@ -730,6 +792,8 @@ def run_simple(
     material_count = {"white": 0, "black": 0}
     winner = None
     reason = None
+    correction_log = {"moves": 0, "tier_used": {"base": 0, "xhigh": 0, "pro-xhigh": 0},
+                      "trig_move": 0, "trig_eval": 0}
 
     is_termination_message = build_termination_predicate(
         ["move made, switching player", TerminationReason.TOO_MANY_WRONG_ACTIONS.value.lower()]
@@ -768,6 +832,49 @@ def run_simple(
         p.reflections_used = 0
         p.reflections_used_before_board = 0
         p.material_count = {"white": 0, "black": 0}
+
+    # Self-correcting harness: build the escalation tiers (xhigh, then pro@xhigh) for the LLM
+    # side. Each tier is the base config cloned with reasoning_effort (and model) overridden.
+    import copy as _copy
+
+    def _derive_agent(base_cfg, color, label, model=None, effort="xhigh"):
+        cfg = _copy.deepcopy(base_cfg)
+        entry = cfg["config_list"][0] if cfg.get("config_list") else cfg
+        if model:
+            entry["model"] = model
+        entry["reasoning_effort"] = effort
+        ag = GameAgent(
+            name=("Player_White" if color == "white" else "Player_Black"),
+            system_message=sys_msg, llm_config=cfg,
+            is_termination_msg=is_termination_message,
+            human_input_mode="NEVER", dialog_turn_delay=0,
+            max_retries=max_api_retries, retry_delay=api_retry_delay,
+        )
+        ag.tier_label = label
+        ag.accumulated_reply_time_seconds = 0.0
+        return ag
+
+    llm_tiers = {}
+    if correct_socket:
+        for color, ptype, base, base_cfg in (
+            ("white", white_player_type, player_white, llm_config_white),
+            ("black", black_player_type, player_black, llm_config_black),
+        ):
+            if ptype in (PlayerType.LLM_WHITE, PlayerType.LLM_BLACK):
+                base.tier_label = "base"
+                entry = base_cfg["config_list"][0] if base_cfg.get("config_list") else base_cfg
+                # tier 2 (pro) must go through the Responses API — built as a direct-OpenAI shim.
+                pro = _ResponsesPlayer(
+                    name=base.name, system_message=sys_msg, model=correct_pro_model,
+                    api_key=entry.get("api_key"), base_url=entry.get("base_url"),
+                    effort="xhigh", service_tier=(entry.get("extra_body") or {}).get("service_tier"),
+                    max_retries=max_api_retries, retry_delay=api_retry_delay,
+                )
+                llm_tiers[color] = [
+                    ("base", base),
+                    ("xhigh", _derive_agent(base_cfg, color, "xhigh", effort="xhigh")),
+                    ("pro-xhigh", pro),
+                ]
 
     san_mode = (notation == "san")
 
@@ -852,33 +959,65 @@ def run_simple(
                     continue
                 raise
 
-    def _llm_move(player, color):
-        fmt = "SAN" if san_mode else "UCI"
-        example = "make_move Nf3" if san_mode else "make_move e2e4"
+    def _instruction(fmt, example):
         if explain:
-            instruction = (
+            return (
                 "Play the strongest move you can find. Your written explanation will be used to "
-                "teach chess to others, so once you've decided, write around 300 words, broken "
-                "into paragraphs: first explain why you chose your move over the main alternatives, "
-                "then give your evaluation of the resulting position as a single number — positive "
-                "favours White, negative favours Black, in pawns — and the key factors behind it. "
+                "teach chess to others. Target around 1000 words if the position is sufficiently "
+                "complex; do not add unnecessary padding to force that length if it is not helpful. "
+                "First explain why you chose your move over the main alternatives. Then, on its own "
+                "line, give your evaluation of the resulting position exactly as: eval: <number> "
+                "(in pawns; positive favours White, negative favours Black), followed by the key "
+                "factors behind it. "
                 f"Finish with your move on its own final line, exactly as: make_move <{fmt}> "
                 f"(e.g. {example}), taken verbatim from the Legal moves list."
             )
-        else:
-            instruction = (
-                f"Reply with your move as the FINAL line, exactly as: make_move <{fmt}>  "
-                f"(e.g. {example}). Pick a move verbatim from the Legal moves list. "
-                "You may reason first, but the last line must be that."
-            )
-        # Resolve the legal-move list ONCE per move (an ordered list costs a Stockfish query per
-        # legal move, so it must not be recomputed on each no-legal-move retry).
-        legal_str = _legal_for_prompt()
-        # Covert nudge: when the list is Stockfish-ordered, tell the model to work down the list
-        # from the top — without revealing it is sorted by strength.
+        return (
+            f"Reply with your move as the FINAL line, exactly as: make_move <{fmt}>  "
+            f"(e.g. {example}). Pick a move verbatim from the Legal moves list. "
+            "You may reason first, but the last line must be that."
+        )
+
+    def _responses_call(player, messages):
+        """One completion through the OpenAI Responses API (for the pro tier). Mirrors
+        _llm_call's return: (content, prompt_tokens, completion_tokens, elapsed_seconds)."""
+        sys_text = next((m["content"] for m in messages if m["role"] == "system"), None)
+        user_text = next((m["content"] for m in messages if m["role"] == "user"), "")
+        for attempt in range(player.max_retries + 1):
+            try:
+                t0 = time.time()
+                kwargs = {"model": player.model, "input": user_text,
+                          "reasoning": {"effort": player.effort}}
+                if sys_text:
+                    kwargs["instructions"] = sys_text
+                if player.service_tier:
+                    kwargs["service_tier"] = player.service_tier
+                resp = player._client.responses.create(**kwargs)
+                elapsed = time.time() - t0
+                player.accumulated_reply_time_seconds += elapsed
+                content = getattr(resp, "output_text", "") or ""
+                u = getattr(resp, "usage", None)
+                pt = int(getattr(u, "input_tokens", 0) or 0)
+                ct = int(getattr(u, "output_tokens", 0) or 0)
+                return content, pt, ct, elapsed
+            except Exception as e:
+                if attempt < player.max_retries and is_retryable_error(e):
+                    print(f"\033[93mAPI error (responses) attempt {attempt+1} for {player.name}: {e}\033[0m")
+                    time.sleep(player.retry_delay * (2 ** attempt))
+                    continue
+                raise
+
+    def _attempt(agent, color, legal_str):
+        """Prompt one agent for a move; retry on unparseable replies. Returns (uci, full_text)."""
+        fmt = "SAN" if san_mode else "UCI"
+        example = "make_move Nf3" if san_mode else "make_move e2e4"
+        instruction = _instruction(fmt, example)
+        # Covert nudge (ordering mode only): tell the model to work down the list from the top
+        # without revealing it is sorted by strength. Off in correction mode (no sf-order).
         order_line = (" Work through the Legal moves in the order given, starting from the first."
                       if order_socket else "")
         note = ""
+        text = ""
         for _ in range(max_failed_attempts + 1):
             user = (
                 f"You are playing chess as {color}. Choose the strongest legal move.{order_line}\n\n"
@@ -887,24 +1026,97 @@ def run_simple(
                 f"Legal moves ({fmt}): {legal_str}\n\n"
                 f"{note}{instruction}"
             )
-            print(f"\n================ PROMPT -> {player.name} ({color}) ================")
+            label = getattr(agent, "tier_label", None)
+            tier_tag = f" [{label}]" if label and label != "base" else ""
+            print(f"\n================ PROMPT -> {agent.name}{tier_tag} ({color}) ================")
             print(user, flush=True)
-            text, pt, ct, secs = _llm_call(player, [
-                {"role": "system", "content": player.system_message},
-                {"role": "user", "content": user},
-            ])
-            # Full model response (includes the written explanation for the -explain variants).
-            print(f"---------------- RESPONSE <- {player.name} ----------------")
+            messages = [{"role": "system", "content": agent.system_message},
+                        {"role": "user", "content": user}]
+            caller = _responses_call if getattr(agent, "use_responses", False) else _llm_call
+            text, pt, ct, secs = caller(agent, messages)
+            print(f"---------------- RESPONSE <- {agent.name}{tier_tag} ----------------")
             print(text)
             print(f"[tokens] prompt={pt}  completion={ct}  total={pt + ct}  [time] {secs:.1f}s",
                   flush=True)
             mv = _resolve(text)
             if mv:
-                return mv
-            player.wrong_moves += 1
+                return mv, text
+            agent.wrong_moves += 1
             note = (f"Your previous reply had no legal move. Pick strictly one move ({fmt}) from "
                     f"the Legal moves list and end with 'make_move <{fmt}>'.\n")
-        return None
+        return None, text
+
+    def _fmt_pawns(cp):
+        return "mate" if abs(cp) >= 100000 else f"{cp/100.0:+.2f}"
+
+    def _correct_move(color):
+        """Self-correcting move: tier0 plays; if the move is a >=25% win-rate blunder OR the
+        model's stated eval is >=25% win-rate off the real eval, redo with a stronger tier
+        (xhigh, then pro@xhigh). Only the root and the played move are evaluated by Stockfish."""
+        from stockfish_server import request_root, request_move_eval
+        mover_white = (color == "white")
+        fen = board.fen()
+        legal_str = _legal_for_prompt()
+        root_move, root_cp = None, None
+        try:
+            root_move, root_cp = request_root(correct_socket, fen, nodes=correct_nodes)
+        except Exception as e:  # noqa: BLE001 — never let SF break the game
+            print(f"\033[93m[correction] root eval failed, skipping checks: {e}\033[0m", flush=True)
+        played_cache = {}
+        tiers = llm_tiers[color]
+        final_mv = None
+        for ti, (label, agent) in enumerate(tiers):
+            mv, text = _attempt(agent, color, legal_str)
+            if mv is None:
+                print(f"\033[93m[correction] tier={label} produced no legal move\033[0m", flush=True)
+                continue
+            final_mv = mv
+            correction_log["tier_used"][label] = correction_log["tier_used"].get(label, 0) + 1
+            if root_cp is None:
+                break  # can't check — accept this tier's move
+            if mv not in played_cache:
+                try:
+                    played_cache[mv] = request_move_eval(correct_socket, fen, mv, nodes=correct_nodes)
+                except Exception as e:  # noqa: BLE001
+                    print(f"\033[93m[correction] played eval failed: {e}\033[0m", flush=True)
+                    played_cache[mv] = None
+            played_cp = played_cache[mv]
+            model_eval = _parse_model_eval(text)
+            d_move = d_eval = None
+            if played_cp is not None:
+                d_move = _winrate(root_cp / 100.0) - _winrate(played_cp / 100.0)
+            sf_white = None
+            if played_cp is not None and model_eval is not None:
+                sf_white = (played_cp if mover_white else -played_cp) / 100.0
+                d_eval = abs(_winrate(model_eval) - _winrate(sf_white))
+            trig_move = d_move is not None and d_move >= _WIN_TRIGGER - 1e-9
+            trig_eval = d_eval is not None and d_eval >= _WIN_TRIGGER - 1e-9
+            correction_log["trig_move"] += int(trig_move)
+            correction_log["trig_eval"] += int(trig_eval)
+            verdict = ("TRIGGER:" + ("move" if trig_move else "") + ("+eval" if trig_eval else "")) \
+                if (trig_move or trig_eval) else "OK"
+            me = f"{model_eval:+.2f}" if model_eval is not None else "n/a"
+            sfw = f"{sf_white:+.2f}" if sf_white is not None else "n/a"
+            dm = f"{d_move:.3f}" if d_move is not None else "n/a"
+            de = f"{d_eval:.3f}" if d_eval is not None else "n/a"
+            print(f"\033[95m[correction] tier={label} move={mv} | SF best={root_move} "
+                  f"root={_fmt_pawns(root_cp)} played={_fmt_pawns(played_cp) if played_cp is not None else 'n/a'} "
+                  f"dWR_move={dm} | model_eval={me} sf_eval(white)={sfw} dWR_eval={de} -> {verdict}\033[0m",
+                  flush=True)
+            if not (trig_move or trig_eval):
+                break
+            if ti == len(tiers) - 1:
+                print("\033[95m[correction] escalation exhausted — accepting pro move\033[0m", flush=True)
+                break
+            print(f"\033[95m[correction] escalating -> {tiers[ti + 1][0]}\033[0m", flush=True)
+        correction_log["moves"] += 1
+        return final_mv
+
+    def _llm_move(player, color):
+        if correct_socket and color in llm_tiers:
+            return _correct_move(color)
+        mv, _text = _attempt(player, color, _legal_for_prompt())
+        return mv
 
     def _maia_move(player):
         reply = player.generate_reply(messages=[{"role": "user", "content": "Your move."}])
@@ -978,9 +1190,13 @@ def run_simple(
 
     game_stats = generate_game_stats(time_started, winner, reason, current_move,
                                      player_white, player_black, material_count, pgn_string)
-    base_ptype = "simple-sans" if notation == "san" else "simple"
-    game_stats["prompt_type"] = (base_ptype + ("-explain" if explain else "")
-                                 + ("-sforder" if order_socket else ""))
+    if correct_socket:
+        game_stats["prompt_type"] = "sf-explain-with-correction"
+        game_stats["correction"] = correction_log
+    else:
+        base_ptype = "simple-sans" if notation == "san" else "simple"
+        game_stats["prompt_type"] = (base_ptype + ("-explain" if explain else "")
+                                     + ("-sforder" if order_socket else ""))
     display_store_game_video_and_stats(game_stats, log_dir)
     return game_stats, player_white, player_black
 
