@@ -678,10 +678,14 @@ def run(
 # Win-rate scale for the self-correcting harness. Maps a signed eval (pawns, + favours the
 # referenced side) to a signed winning-chances value in [-1, 1], calibrated so |eval| of
 # 0.25/0.5/1/2/4 pawns -> 12.5/25/50/75/87.5%:  W(a)=0.5a for a<=1, W(a)=1-1/(2a) for a>=1
-# (smooth at a=1). A move/eval is flagged when two evals differ by >= 25% win-rate (0.25). The
-# spec's example boundaries (+0.25->-0.25, +1->+0.5, +2->+1, mate->+2) all sit exactly at 0.25,
-# so the comparison is ">=" (with mate clamped to 100%).
-_WIN_TRIGGER = 0.25
+# (smooth at a=1, mate clamped to 100%). Two checks, each with its own bound (comparison is ">="
+# since the spec's boundary examples are meant to trigger):
+#   - MOVE: played move vs best move (root) -> redo if the move drops >= 25% win-rate.
+#   - EVAL: model's stated eval vs the ROOT (objective best-play) eval, both White-POV -> redo if
+#     they differ >= 40% win-rate. Compared to root (NOT the played move) so a worse move can't be
+#     accepted just because the model also under/over-evaluated it consistently.
+_WIN_TRIGGER_MOVE = 0.25
+_WIN_TRIGGER_EVAL = 0.40
 
 
 def _winrate(pawns: float) -> float:
@@ -1082,26 +1086,28 @@ def run_simple(
                     played_cache[mv] = None
             played_cp = played_cache[mv]
             model_eval = _parse_model_eval(text)
+            # Root eval in White-POV — the objective best-play value of the position.
+            root_white = (root_cp if mover_white else -root_cp) / 100.0
             d_move = d_eval = None
             if played_cp is not None:
+                # MOVE quality: best (root) vs played, both from the mover's POV.
                 d_move = _winrate(root_cp / 100.0) - _winrate(played_cp / 100.0)
-            sf_white = None
-            if played_cp is not None and model_eval is not None:
-                sf_white = (played_cp if mover_white else -played_cp) / 100.0
-                d_eval = abs(_winrate(model_eval) - _winrate(sf_white))
-            trig_move = d_move is not None and d_move >= _WIN_TRIGGER - 1e-9
-            trig_eval = d_eval is not None and d_eval >= _WIN_TRIGGER - 1e-9
+            if model_eval is not None:
+                # EVAL accuracy: model's stated eval vs the ROOT eval (both White-POV).
+                d_eval = abs(_winrate(model_eval) - _winrate(root_white))
+            trig_move = d_move is not None and d_move >= _WIN_TRIGGER_MOVE - 1e-9
+            trig_eval = d_eval is not None and d_eval >= _WIN_TRIGGER_EVAL - 1e-9
             correction_log["trig_move"] += int(trig_move)
             correction_log["trig_eval"] += int(trig_eval)
             verdict = ("TRIGGER:" + ("move" if trig_move else "") + ("+eval" if trig_eval else "")) \
                 if (trig_move or trig_eval) else "OK"
             me = f"{model_eval:+.2f}" if model_eval is not None else "n/a"
-            sfw = f"{sf_white:+.2f}" if sf_white is not None else "n/a"
             dm = f"{d_move:.3f}" if d_move is not None else "n/a"
             de = f"{d_eval:.3f}" if d_eval is not None else "n/a"
             print(f"\033[95m[correction] tier={label} move={mv} | SF best={root_move} "
                   f"root={_fmt_pawns(root_cp)} played={_fmt_pawns(played_cp) if played_cp is not None else 'n/a'} "
-                  f"dWR_move={dm} | model_eval={me} sf_eval(white)={sfw} dWR_eval={de} -> {verdict}\033[0m",
+                  f"dWR_move={dm}(>={_WIN_TRIGGER_MOVE:.2f}) | model_eval={me} sf_root(white)={root_white:+.2f} "
+                  f"dWR_eval={de}(>={_WIN_TRIGGER_EVAL:.2f}) -> {verdict}\033[0m",
                   flush=True)
             if not (trig_move or trig_eval):
                 break

@@ -37,7 +37,7 @@ import chess.engine
 
 _ENGINE = None
 _LOCK = threading.Lock()
-_NODES = 1_000_000
+_NODES = 5_000_000
 _MATE = 1_000_000  # finite stand-in for mate scores when sorting
 
 
@@ -191,7 +191,7 @@ def main():
     ap.add_argument("--sf-path", default="/workspace/engines/stockfish18")
     ap.add_argument("--hash", type=int, default=128, help="hash size in MB (cleared per move)")
     ap.add_argument("--threads", type=int, default=16)
-    ap.add_argument("--nodes", type=int, default=1_000_000, help="nodes per legal move")
+    ap.add_argument("--nodes", type=int, default=5_000_000, help="nodes per search")
     args = ap.parse_args()
 
     global _ENGINE, _NODES

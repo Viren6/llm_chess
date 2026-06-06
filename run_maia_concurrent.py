@@ -490,7 +490,9 @@ def main():
                     help="re-order the legal-move list best->worst with a shared Stockfish 18 "
                          "(covert nudge; adds a '-sforder' prompt_type). Only affects simple* prompts.")
     ap.add_argument("--sf-path", default="/workspace/engines/stockfish18")
-    ap.add_argument("--sf-nodes", type=int, default=1_000_000, help="SF nodes per legal move")
+    ap.add_argument("--sf-nodes", type=int, default=5_000_000,
+                    help="SF nodes per search (per legal move for the nudge; root + played move "
+                         "for correction)")
     ap.add_argument("--sf-hash", type=int, default=128, help="SF hash MB (cleared per move)")
     ap.add_argument("--sf-threads", type=int, default=16,
                     help="threads the single shared SF instance uses per search (one engine, "
