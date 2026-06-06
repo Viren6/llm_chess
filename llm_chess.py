@@ -722,7 +722,7 @@ class _ResponsesPlayer:
     Exposes just what the simple harness touches: name, system_message, wrong_moves, retries."""
 
     def __init__(self, name, system_message, model, api_key, base_url, effort, service_tier,
-                 max_retries, retry_delay):
+                 max_retries, retry_delay, timeout=7200):
         from openai import OpenAI
         self.name = name
         self.system_message = system_message
@@ -735,7 +735,8 @@ class _ResponsesPlayer:
         self.service_tier = service_tier
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self._client = OpenAI(api_key=api_key, **({"base_url": base_url} if base_url else {}))
+        self._client = OpenAI(api_key=api_key, timeout=timeout,
+                              **({"base_url": base_url} if base_url else {}))
 
 
 def run_simple(
@@ -749,6 +750,7 @@ def run_simple(
     correct_socket=None,
     correct_nodes=None,
     correct_pro_model="gpt-5.5-pro",
+    api_timeout=7200,
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
     """Token-lean single-prompt-per-move harness (LLM vs Maia).
 
@@ -787,6 +789,14 @@ def run_simple(
                           black_hyperparams=WHITE_MODEL_CONFIG.copy())
         llm_config_white = llm_config_white or _w
         llm_config_black = llm_config_black or _b
+
+    # Long response times are fine (flex queueing + deep reasoning + 5M-node SF). Push the chat
+    # client timeout out to api_timeout so slow-but-correct replies aren't killed mid-think.
+    for _cfg in (llm_config_white, llm_config_black):
+        if isinstance(_cfg, dict):
+            _cfg["timeout"] = api_timeout
+            for _e in _cfg.get("config_list", []) or []:
+                _e["timeout"] = api_timeout
 
     time_started = time.strftime("%Y.%m.%d_%H:%M")
     make_move_action = "make_move"
@@ -872,7 +882,7 @@ def run_simple(
                     name=base.name, system_message=sys_msg, model=correct_pro_model,
                     api_key=entry.get("api_key"), base_url=entry.get("base_url"),
                     effort="xhigh", service_tier=(entry.get("extra_body") or {}).get("service_tier"),
-                    max_retries=max_api_retries, retry_delay=api_retry_delay,
+                    max_retries=max_api_retries, retry_delay=api_retry_delay, timeout=api_timeout,
                 )
                 llm_tiers[color] = [
                     ("base", base),
@@ -896,7 +906,7 @@ def run_simple(
         """Stockfish best->worst order of the current legal moves (covert nudge). Falls back to
         board order if the server is unreachable, so a game never dies on an ordering hiccup."""
         from stockfish_server import request_order
-        order = request_order(order_socket, board.fen(), nodes=order_nodes)
+        order = request_order(order_socket, board.fen(), nodes=order_nodes, timeout=api_timeout)
         legal = {m.uci() for m in board.legal_moves}
         # keep only legal moves, then append any legal move the server somehow omitted
         order = [u for u in order if u in legal]
@@ -1063,7 +1073,8 @@ def run_simple(
         legal_str = _legal_for_prompt()
         root_move, root_cp = None, None
         try:
-            root_move, root_cp = request_root(correct_socket, fen, nodes=correct_nodes)
+            root_move, root_cp = request_root(correct_socket, fen, nodes=correct_nodes,
+                                              timeout=api_timeout)
         except Exception as e:  # noqa: BLE001 — never let SF break the game
             print(f"\033[93m[correction] root eval failed, skipping checks: {e}\033[0m", flush=True)
         played_cache = {}
@@ -1080,7 +1091,8 @@ def run_simple(
                 break  # can't check — accept this tier's move
             if mv not in played_cache:
                 try:
-                    played_cache[mv] = request_move_eval(correct_socket, fen, mv, nodes=correct_nodes)
+                    played_cache[mv] = request_move_eval(correct_socket, fen, mv, nodes=correct_nodes,
+                                                         timeout=api_timeout)
                 except Exception as e:  # noqa: BLE001
                     print(f"\033[93m[correction] played eval failed: {e}\033[0m", flush=True)
                     played_cache[mv] = None
