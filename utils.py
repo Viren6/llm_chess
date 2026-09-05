@@ -18,6 +18,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 # Capability mapping for model-specific features
 PROVIDER_CAPABILITIES = {
+    "openai_oauth": {"reasoning_effort"},
     "openai": {"reasoning_effort", "frequency_penalty", "presence_penalty"},
     "azure": {"reasoning_effort", "frequency_penalty", "presence_penalty"},
     "azure_responses": {"reasoning_effort", "frequency_penalty", "presence_penalty"},
@@ -40,6 +41,8 @@ def infer_api_type_for_metadata(provider_conf: Dict[str, Any]) -> Optional[str]:
     - Otherwise return "oai_comp_endpoint" to denote a generic OpenAI-compatible endpoint.
     """
     try:
+        if provider_conf.get("model_client_cls") == "OpenAIOAuthClient":
+            return "openai_oauth"
         declared = provider_conf.get("api_type")
         if isinstance(declared, str) and declared:
             return declared
@@ -116,11 +119,14 @@ def _apply_model_specific_config(config: Dict, model_params: Dict, provider_type
     merged_hyperparams = _merge_hyperparams(model_params)
 
     # Provider-specific features
-    if provider_type in ("openai", "azure", "azure_responses", "xai", "local", "groq", "cerebras"):
+    if provider_type in ("openai", "openai_oauth", "azure", "azure_responses", "xai", "local", "groq", "cerebras"):
         if model_params and "reasoning_effort" in model_params:
             # Store reasoning_effort inside the provider-specific entry (matches get_llms_autogen)
             if config.get("config_list"):
-                config["config_list"][0]["reasoning_effort"] = model_params["reasoning_effort"]
+                # AG2 0.11's OpenAI schema predates 'max'. Keep the OAuth setting
+                # in a custom field so it reaches Codex without being downgraded.
+                effort_key = "oauth_reasoning_effort" if provider_type == "openai_oauth" else "reasoning_effort"
+                config["config_list"][0][effort_key] = model_params["reasoning_effort"]
             # Remove temperature when reasoning_effort is used (top_p is kept just like in get_llms_autogen)
             merged_hyperparams.pop("temperature", None)
     elif provider_type == "anthropic":
@@ -208,6 +214,12 @@ def get_llms(
                 "model": os.environ[f"GEMINI_MODEL_NAME_{key}"],
                 "api_key": os.environ[f"GEMINI_API_KEY_{key}"],
                 "api_type": "google",
+            }
+        elif kind == "openai_oauth":
+            return {
+                "model": os.environ[f"OPENAI_MODEL_NAME_{key}"],
+                "model_client_cls": "OpenAIOAuthClient",
+                "timeout": timeout,
             }
         elif kind == "openai":
             return {

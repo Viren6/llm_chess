@@ -59,6 +59,63 @@ See the [live leaderboard](https://maxim-saplin.github.io/llm_chess/) for rankin
 
 ## Running Games
 
+### ChatGPT subscription OAuth: Astra/max vs Maia 3–2400 (simple UCI)
+
+This path uses **ChatGPT subscription access**, through the official Codex app server,
+with no OpenAI API key. Install the benchmark dependencies (`uv sync`), the
+[Codex CLI](https://learn.chatgpt.com/docs/cli), and Maia 3 (Installation §5) first.
+The adapter was developed against Codex CLI 0.153.0. On Linux, the benchmark's
+CairoSVG dependency also needs the system Cairo library (Ubuntu: `sudo apt install libcairo2`).
+
+Authenticate once, then run the matchup from the repository root:
+
+```bash
+python3 openai_oauth.py login --device-auth
+uv run python run_oauth_maia.py --maia-path /absolute/path/to/maia3-uci
+```
+
+For a local browser login, omit `--device-auth`. Complete the sign-in shown by
+Codex using the ChatGPT account with your subscription. Credentials stay in
+`~/.local/share/llm-chess/codex`, outside the repository and separate from your
+normal Codex configuration. Codex handles token refresh. `LLM_CHESS_CODEX_BIN`
+can specify the Codex executable; `LLM_CHESS_CODEX_HOME` can specify a dedicated
+benchmark authentication directory. Never put credentials in `.env` or game logs.
+Use a dedicated directory without a `config.toml`; the adapter rejects custom
+Codex configuration to avoid inheriting providers, tools, or instructions.
+`--maia-path` may be omitted when `maia3-uci` is on `PATH` or installed under
+`~/.local/share/llm-chess/maia-env/bin/maia3-uci`.
+
+The matchup command pins `gpt-6-astra`, reasoning effort `max`, Maia `maia3-79m`
+at Elo 2400, and the existing simple harness with UCI notation. It runs two games
+sequentially, one per color; `--reps 5` runs ten games. Maia samples at temperature
+1.0/top-p 1.0 with game history. There is no Stockfish assistance or explanation
+variant. Each LLM call starts an ephemeral Codex thread in an empty directory,
+with the harness's chess instructions and tools disabled. This is a Codex app-server
+transport, so Codex's runtime context can differ from direct API inference; the
+logs explicitly record the transport and OAuth authentication.
+
+```bash
+# Check login, account model/effort availability, and the Maia executable without playing:
+uv run python run_oauth_maia.py --check --maia-path /absolute/path/to/maia3-uci
+# Short connectivity test (truncated game, not a benchmark score):
+uv run python run_oauth_maia.py --colors white --max-plies 2 --maia-path /absolute/path/to/maia3-uci
+```
+
+Preflight rejects API-key authentication and unavailable model/effort combinations;
+it never substitutes another model or falls back to API billing. Subscription limits
+and account model access still apply. `--check` does not load Maia's weights or make
+a model inference request. See OpenAI's [authentication documentation](https://learn.chatgpt.com/docs/app-server#authentication-modes).
+
+Each game writes a transcript, game JSON with PGN, `run_config.json`, and an aggregate
+under `_logs/engine_vs_llm/maia-elo-2400/gpt-6-astra-max-oauth-simple/`. An execution
+error stops the launcher and is not added to the aggregate as a draw. Token usage is
+recorded; zero API cost means subscription transport, not unlimited/free inference.
+
+For other **simple-harness** scripts, `get_llms()` accepts `MODEL_KIND_W=openai_oauth`
+and `MODEL_KIND_B=openai_oauth`, with `OPENAI_MODEL_NAME_W`/`_B` set to the exact model ID.
+Pass `{"reasoning_effort": "max"}` in each side's hyperparameters. The dedicated
+launcher handles these settings without modifying `.env`.
+
 ### Single Game
 Run a single chess simulation:
 ```

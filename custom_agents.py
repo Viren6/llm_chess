@@ -81,6 +81,11 @@ class GameAgent(ConversableAgent):
             retry_delay (float): Base delay in seconds between retries. Uses exponential backoff. Default is 2.0.
         """
         super().__init__(*args, **kwargs)
+        if self.llm_config:
+            entries = self.llm_config["config_list"]
+            if any(c.get("model_client_cls") == "OpenAIOAuthClient" for c in entries):
+                from openai_oauth import OpenAIOAuthClient
+                self.register_model_client(model_client_cls=OpenAIOAuthClient)
         # Initialize the counter for wrong moves made by the agent.
         self.wrong_moves = 0
         # Initialize the counter for wrong actions performed by the agent.
