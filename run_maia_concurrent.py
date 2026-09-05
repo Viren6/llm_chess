@@ -175,6 +175,8 @@ def _worker(args):
     else:
         stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
 
+    if stats.get("reason") == llm_chess.TerminationReason.ERROR.value:
+        raise RuntimeError(f"Game failed; see {args.out}/output.txt (not counted as a draw)")
     winner = stats.get("winner")
     agg = {"total_games": 1, "white_wins": 0, "black_wins": 0, "draws": 0}
     if winner == pw.name:
@@ -320,6 +322,7 @@ def _run_forked(args, jobs, servers, folder_for):
     job_iter = iter(jobs)
     running = {}  # pid -> (elo, color, folder)
     done = 0
+    failures = 0
     exhausted = False
     try:
         while not exhausted or running:
@@ -344,6 +347,7 @@ def _run_forked(args, jobs, servers, folder_for):
                 continue
             elo, color, folder = running.pop(pid)
             rc = os.waitstatus_to_exitcode(status)
+            failures += int(rc != 0)
             done += 1
             tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
             print(f"[{done}/{total}] maia-elo-{elo} {color} {tag}", flush=True)
@@ -359,13 +363,33 @@ def _run_forked(args, jobs, servers, folder_for):
             except OSError:
                 pass
 
+    if failures:
+        raise RuntimeError(f"{failures}/{total} games failed; inspect their output.txt logs")
+
 
 # --------------------------------------------------------------------------- launcher
+def _preflight_oauth(configs, prompt):
+    entries = [entry for cfg in configs for entry in cfg.get("config_list", [])
+               if entry.get("model_client_cls") == "OpenAIOAuthClient"]
+    if not entries:
+        return
+    if prompt not in ("simple", "simple-sans", "simple-explain", "simple-sans-explain"):
+        raise ValueError("ChatGPT OAuth requires a simple harness without API escalation")
+    from openai_oauth import AppServer, resolve_codex_binary
+    # Pin an absolute executable for all children, including spawned workers.
+    os.environ["LLM_CHESS_CODEX_BIN"] = resolve_codex_binary()
+    with AppServer(timeout=60) as server:
+        server.require_chatgpt()
+        for model, effort in {(e["model"], e.get("oauth_reasoning_effort", "max")) for e in entries}:
+            server.check_model(model, effort)
+
+
 def _launch(args):
     colors = ["white", "black"] if args.colors == "both" else [args.colors]
 
     # Validate .env + model slug once (fail fast before spinning up servers).
     cfg_w, cfg_b = get_llms(white_hyperparams=_hyperparams(args), black_hyperparams=_hyperparams(args))
+    _preflight_oauth((cfg_w, cfg_b), args.prompt)
     model_slug = _slug(_model_of_config(cfg_b) or _model_of_config(cfg_w))
     # Effort-specific folder so different reasoning_effort tiers (e.g. medium vs xhigh) never
     # pool on disk. The base model slug stays recoverable (table strips the "-<effort>" suffix).
@@ -406,6 +430,11 @@ def _launch(args):
                "--out", folder]
         cmd += ["--thinking"] if args.thinking else ["--no-thinking"]
         cmd += ["--prompt", args.prompt]
+        cmd += ["--thinking-style", args.thinking_style]
+        if args.reasoning_effort is not None:
+            cmd += ["--reasoning-effort", args.reasoning_effort]
+        if args.service_tier is not None:
+            cmd += ["--service-tier", args.service_tier]
         if need_sf:
             cmd += ["--sf-socket", sf_sock, "--sf-nodes", str(args.sf_nodes)]
         if args.prompt == "sf-explain-with-correction":
@@ -423,13 +452,17 @@ def _launch(args):
     try:
         if args.spawn:
             done = 0
+            failures = 0
             with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
                 futures = [ex.submit(run_one_spawn, j) for j in jobs]
                 for fut in concurrent.futures.as_completed(futures):
                     elo, color, folder, rc = fut.result()
                     done += 1
+                    failures += int(rc != 0)
                     tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
                     print(f"[{done}/{len(jobs)}] maia-elo-{elo} {color} {tag}", flush=True)
+            if failures:
+                raise RuntimeError(f"{failures}/{len(jobs)} games failed; inspect their output.txt logs")
         else:
             _run_forked(args, jobs, servers, folder_for)
     finally:

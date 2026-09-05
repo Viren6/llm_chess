@@ -84,6 +84,9 @@ Use a dedicated directory without a `config.toml`; the adapter rejects custom
 Codex configuration to avoid inheriting providers, tools, or instructions.
 `--maia-path` may be omitted when `maia3-uci` is on `PATH` or installed under
 `~/.local/share/llm-chess/maia-env/bin/maia3-uci`.
+Codex is resolved to an absolute executable: an explicit `LLM_CHESS_CODEX_BIN`,
+then `PATH`, `~/.local/bin`, or an installed VS Code Codex extension for this
+platform. This also works in terminals that do not inherit VS Code's extension PATH.
 
 The matchup command pins `gpt-6-astra`, reasoning effort `max`, Maia `maia3-79m`
 at Elo 2400, and the existing simple harness with UCI notation. It runs two games
@@ -115,6 +118,23 @@ For other **simple-harness** scripts, `get_llms()` accepts `MODEL_KIND_W=openai_
 and `MODEL_KIND_B=openai_oauth`, with `OPENAI_MODEL_NAME_W`/`_B` set to the exact model ID.
 Pass `{"reasoning_effort": "max"}` in each side's hyperparameters. The dedicated
 launcher handles these settings without modifying `.env`.
+
+For 40 games (20 per color) with 20 concurrent workers and a shared Maia engine:
+
+```bash
+MODEL_KIND_W=openai_oauth MODEL_KIND_B=openai_oauth \
+OPENAI_MODEL_NAME_W=gpt-6-astra OPENAI_MODEL_NAME_B=gpt-6-astra \
+.venv/bin/python run_maia_concurrent.py \
+  --elos 2400 --reps 20 --colors both --concurrency 20 \
+  --prompt simple --reasoning-effort max --no-thinking \
+  --maia-path "$HOME/.local/share/llm-chess/maia-env/bin/maia3-uci" \
+  --maia-model maia3-79m --logs-root _logs/oauth-simple
+```
+
+Here `--no-thinking` disables unrelated chat-template options; `--reasoning-effort max`
+still controls Astra. The concurrent launcher checks OAuth and model access before
+starting Maia or game workers. Execution errors produce failed workers and a nonzero
+launcher exit status, and are excluded from score aggregates.
 
 ### Single Game
 Run a single chess simulation:

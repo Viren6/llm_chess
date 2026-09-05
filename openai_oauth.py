@@ -9,7 +9,9 @@ from collections import deque
 import json
 import os
 from pathlib import Path
+import platform
 import queue
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -33,8 +35,31 @@ def codex_env():
     return env
 
 
+def resolve_codex_binary():
+    """Resolve before changing cwd; editor and ordinary terminal PATHs differ."""
+    override = os.environ.get("LLM_CHESS_CODEX_BIN")
+    if override:
+        found = shutil.which(os.path.expanduser(override))
+        if not found:
+            raise FileNotFoundError(f"LLM_CHESS_CODEX_BIN is not executable: {override}")
+        return str(Path(found).resolve())
+    found = shutil.which("codex")
+    if found:
+        return str(Path(found).resolve())
+    home = Path.home()
+    candidates = [home / ".local/bin/codex"]
+    target = f"{platform.system().lower()}-{platform.machine().lower()}"
+    for directory in (".vscode-server", ".vscode", ".vscode-server-insiders", ".vscode-insiders"):
+        bundled = (home / directory / "extensions").glob(f"openai.chatgpt-*/bin/{target}/codex")
+        candidates.extend(sorted(bundled, key=lambda p: p.stat().st_mtime, reverse=True))
+    for path in candidates:
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path.resolve())
+    raise FileNotFoundError("Codex executable not found. Install Codex CLI or set LLM_CHESS_CODEX_BIN to its absolute path.")
+
+
 def codex_command():
-    return [os.environ.get("LLM_CHESS_CODEX_BIN", "codex"),
+    return [resolve_codex_binary(),
             "-c", 'forced_login_method="chatgpt"', "-c", 'model_provider="openai"']
 
 
@@ -195,6 +220,8 @@ class AppServer:
                     self.proc.wait()
             for stream in (self.proc.stdin, self.proc.stdout):
                 stream.close()
+            if hasattr(self, "reader"):
+                self.reader.join(timeout=5)
         self.cwd.cleanup()
 
     def __enter__(self):
