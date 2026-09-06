@@ -136,6 +136,25 @@ still controls Astra. The concurrent launcher checks OAuth and model access befo
 starting Maia or game workers. Execution errors produce failed workers and a nonzero
 launcher exit status, and are excluded from score aggregates.
 
+### Export logged games to PGN
+
+`export_pgn.py` combines the PGN stored in per-game JSON logs into a single file.
+It validates legal moves, ply counts, logged winners, and terminal board results
+before writing. Player headers identify the model/reasoning effort and Maia anchor;
+each game includes its source-log path. Source logs are never modified.
+
+```bash
+.venv/bin/python export_pgn.py \
+  --logs _logs/oauth-simple/engine_vs_llm/maia-elo-2400/gpt-6-astra-max \
+  --run 2026-09-05-21-47-07-p135893 --expected-games 40 \
+  --out exports/astra-max-vs-maia2400-40-games.pgn
+```
+
+Use the relevant run-folder prefix for `--run`, or omit it to export all games
+under `--logs`. `--expected-games` prevents exporting an incomplete batch by
+mistake. Invalid logs or infrastructure-error games stop the export and preserve
+any existing output file.
+
 ### Single Game
 Run a single chess simulation:
 ```
