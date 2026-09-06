@@ -168,6 +168,7 @@ make_move c7c5
 [tokens] prompt=4409  completion=1713  total=6122  [time] 56.1s
 [94mMADE MOVE 14: Player_Black c7c5[0m
 [94mMADE MOVE 15: Chess_Engine_BT4_Policy_White d4c5[0m
+[autogen.oai.client: 09-06 14:32:34] {977} INFO - Detected custom model client in config: OpenAIOAuthClient, model client can not be used until register_model_client is called.
 
 ================ PROMPT -> Player_Black (black) ================
 You are playing chess as black. Choose the strongest legal move.
@@ -187,38 +188,1024 @@ FEN: rnbq1rk1/pp2bppp/4pn2/2Pp4/2P5/5NP1/PPQBPPBP/RN2K2R b KQ - 0 8
 Legal moves (UCI): g8h8,f8e8,d8e8,d8d7,d8c7,d8d6,d8b6,d8a5,c8d7,b8d7,b8c6,b8a6,e7d6,e7c5,f6e8,f6d7,f6h5,f6g4,f6e4,d5c4,h7h6,g7g6,b7b6,a7a6,e6e5,d5d4,h7h5,g7g5,b7b5,a7a5
 
 Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
-[91mExecution was halted due to error.[0m
-Exception details: Codex turn failed: Selected model is at capacity. Please try a different model.
-Traceback (most recent call last):
-  File "/home/privateclient/misc/llm_chess/llm_chess.py", line 1164, in run_simple
-    mv = _llm_move(player, "white" if player is player_white else "black")
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/llm_chess.py", line 1145, in _llm_move
-    mv, _text = _attempt(player, color, _legal_for_prompt())
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/llm_chess.py", line 1059, in _attempt
-    text, pt, ct, secs = caller(agent, messages)
-                         ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/llm_chess.py", line 968, in _llm_call
-    resp = player.client.create(messages=messages)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/custom_agents.py", line 122, in create
-    resp = orig_create(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/.venv/lib/python3.12/site-packages/autogen/oai/client.py", line 1277, in create
-    response = client.create(params)
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/openai_oauth.py", line 245, in create
-    content, reasoning, usage = server.complete(self.model, self.effort, params["messages"])
-                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/privateclient/misc/llm_chess/openai_oauth.py", line 206, in complete
-    raise RuntimeError(f"Codex turn failed: {error.get('message', p['turn']['status'])}")
-RuntimeError: Codex turn failed: Selected model is at capacity. Please try a different model.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d5d4
+[tokens] prompt=74901  completion=13262  total=88163  [time] 443.8s
+[94mMADE MOVE 16: Player_Black d5d4[0m
+[94mMADE MOVE 17: Chess_Engine_BT4_Policy_White e1g1[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ⭘ ♜ ♚ ⭘
+♟ ♟ ⭘ ⭘ ♝ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ♟ ♞ ⭘ ⭘
+⭘ ⭘ ♙ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♙ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ♙ ⭘
+♙ ♙ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ♘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbq1rk1/pp2bppp/4pn2/2P5/2Pp4/5NP1/PPQBPPBP/RN3RK1 b - - 1 9
+
+Legal moves (UCI): g8h8,f8e8,d8e8,d8d7,d8c7,d8d6,d8b6,d8d5,d8a5,c8d7,b8d7,b8c6,b8a6,e7d6,e7c5,f6e8,f6d7,f6h5,f6d5,f6g4,f6e4,h7h6,g7g6,b7b6,a7a6,e6e5,d4d3,h7h5,g7g5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e7c5
+[tokens] prompt=4412  completion=2597  total=7009  [time] 82.3s
+[94mMADE MOVE 18: Player_Black e7c5[0m
+[94mMADE MOVE 19: Chess_Engine_BT4_Policy_White b2b4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ⭘ ♜ ♚ ⭘
+♟ ♟ ⭘ ⭘ ⭘ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ♟ ♞ ⭘ ⭘
+⭘ ⭘ ♝ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ♙ ♙ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ♘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbq1rk1/pp3ppp/4pn2/2b5/1PPp4/5NP1/P1QBPPBP/RN3RK1 b - - 0 10
+
+Legal moves (UCI): g8h8,f8e8,d8e8,d8e7,d8d7,d8c7,d8d6,d8b6,d8d5,d8a5,c8d7,b8d7,b8c6,b8a6,f6e8,f6d7,f6h5,f6d5,f6g4,f6e4,c5e7,c5d6,c5b6,c5b4,h7h6,g7g6,b7b6,a7a6,e6e5,d4d3,h7h5,g7g5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move c5b6
+[tokens] prompt=74355  completion=10299  total=84654  [time] 365.2s
+[94mMADE MOVE 20: Player_Black c5b6[0m
+[94mMADE MOVE 21: Chess_Engine_BT4_Policy_White c4c5[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ⭘ ♜ ♚ ⭘
+♟ ♟ ⭘ ⭘ ⭘ ♟ ♟ ♟
+⭘ ♝ ⭘ ⭘ ♟ ♞ ⭘ ⭘
+⭘ ⭘ ♙ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ♙ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ♘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbq1rk1/pp3ppp/1b2pn2/2P5/1P1p4/5NP1/P1QBPPBP/RN3RK1 b - - 0 11
+
+Legal moves (UCI): g8h8,f8e8,d8e8,d8e7,d8d7,d8c7,d8d6,d8d5,c8d7,b8d7,b8c6,b8a6,f6e8,f6d7,f6h5,f6d5,f6g4,f6e4,b6c7,b6c5,b6a5,h7h6,g7g6,a7a6,e6e5,d4d3,h7h5,g7g5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move b6c7
+[tokens] prompt=35563  completion=9255  total=44818  [time] 289.5s
+[94mMADE MOVE 22: Player_Black b6c7[0m
+[94mMADE MOVE 23: Chess_Engine_BT4_Policy_White b1a3[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ⭘ ♜ ♚ ⭘
+♟ ♟ ♝ ⭘ ⭘ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ♟ ♞ ⭘ ⭘
+⭘ ⭘ ♙ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ♙ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+♘ ⭘ ⭘ ⭘ ⭘ ♘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbq1rk1/ppb2ppp/4pn2/2P5/1P1p4/N4NP1/P1QBPPBP/R4RK1 b - - 2 12
+
+Legal moves (UCI): g8h8,f8e8,d8e8,d8e7,d8d7,d8d6,d8d5,c8d7,b8d7,b8c6,b8a6,c7d6,c7b6,c7e5,c7a5,c7f4,c7g3,f6e8,f6d7,f6h5,f6d5,f6g4,f6e4,h7h6,g7g6,b7b6,a7a6,e6e5,d4d3,h7h5,g7g5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e6e5
+[tokens] prompt=125656  completion=15185  total=140841  [time] 559.3s
+[94mMADE MOVE 24: Player_Black e6e5[0m
+[94mMADE MOVE 25: Chess_Engine_BT4_Policy_White a3c4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ⭘ ♜ ♚ ⭘
+♟ ♟ ♝ ⭘ ⭘ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ♞ ⭘ ⭘
+⭘ ⭘ ♙ ⭘ ♟ ⭘ ⭘ ⭘
+⭘ ♙ ♘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbq1rk1/ppb2ppp/5n2/2P1p3/1PNp4/5NP1/P1QBPPBP/R4RK1 b - - 1 13
+
+Legal moves (UCI): g8h8,f8e8,d8e8,d8e7,d8d7,d8d6,d8d5,c8d7,c8e6,c8f5,c8g4,c8h3,b8d7,b8c6,b8a6,c7d6,c7b6,c7a5,f6e8,f6d7,f6h5,f6d5,f6g4,f6e4,h7h6,g7g6,b7b6,a7a6,e5e4,d4d3,h7h5,g7g5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f8e8
+[tokens] prompt=175921  completion=26921  total=202842  [time] 918.8s
+[94mMADE MOVE 26: Player_Black f8e8[0m
+[94mMADE MOVE 27: Chess_Engine_BT4_Policy_White f3g5[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ♜ ⭘ ♚ ⭘
+♟ ♟ ♝ ⭘ ⭘ ♟ ♟ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ♞ ⭘ ⭘
+⭘ ⭘ ♙ ⭘ ♟ ⭘ ♘ ⭘
+⭘ ♙ ♘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbqr1k1/ppb2ppp/5n2/2P1p1N1/1PNp4/6P1/P1QBPPBP/R4RK1 b - - 3 14
+
+Legal moves (UCI): g8h8,g8f8,e8f8,e8e7,e8e6,d8e7,d8d7,d8d6,d8d5,c8d7,c8e6,c8f5,c8g4,c8h3,b8d7,b8c6,b8a6,c7d6,c7b6,c7a5,f6d7,f6h5,f6d5,f6g4,f6e4,h7h6,g7g6,b7b6,a7a6,e5e4,d4d3,h7h5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move h7h6
+[tokens] prompt=205646  completion=16967  total=222613  [time] 554.1s
+[94mMADE MOVE 28: Player_Black h7h6[0m
+[94mMADE MOVE 29: Chess_Engine_BT4_Policy_White g5e4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ♝ ♛ ♜ ⭘ ♚ ⭘
+♟ ♟ ♝ ⭘ ⭘ ♟ ♟ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♞ ⭘ ♟
+⭘ ⭘ ♙ ⭘ ♟ ⭘ ⭘ ⭘
+⭘ ♙ ♘ ♟ ♘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rnbqr1k1/ppb2pp1/5n1p/2P1p3/1PNpN3/6P1/P1QBPPBP/R4RK1 b - - 1 15
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8e7,e8e6,d8e7,d8d7,d8d6,d8d5,c8d7,c8e6,c8f5,c8g4,c8h3,b8d7,b8c6,b8a6,c7d6,c7b6,c7a5,f6h7,f6d7,f6h5,f6d5,f6g4,f6e4,g7g6,b7b6,a7a6,h6h5,d4d3,g7g5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move c8f5
+[tokens] prompt=56238  completion=9712  total=65950  [time] 309.2s
+[94mMADE MOVE 30: Player_Black c8f5[0m
+[94mMADE MOVE 31: Chess_Engine_BT4_Policy_White e4f6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ♛ ♜ ⭘ ♚ ⭘
+♟ ♟ ♝ ⭘ ⭘ ♟ ♟ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♘ ⭘ ♟
+⭘ ⭘ ♙ ⭘ ♟ ♝ ⭘ ⭘
+⭘ ♙ ♘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ♕ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn1qr1k1/ppb2pp1/5N1p/2P1pb2/1PNp4/6P1/P1QBPPBP/R4RK1 b - - 0 16
+
+Legal moves (UCI): g8h8,g8f8,d8f6,g7f6
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d8f6
+[tokens] prompt=4308  completion=1675  total=5983  [time] 55.0s
+[94mMADE MOVE 32: Player_Black d8f6[0m
+[94mMADE MOVE 33: Chess_Engine_BT4_Policy_White c2a4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ⭘ ♜ ⭘ ♚ ⭘
+♟ ♟ ♝ ⭘ ⭘ ♟ ♟ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ♙ ⭘ ♟ ♝ ⭘ ⭘
+♕ ♙ ♘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn2r1k1/ppb2pp1/5q1p/2P1pb2/QPNp4/6P1/P2BPPBP/R4RK1 b - - 1 17
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8d8,e8c8,e8e7,e8e6,b8d7,b8c6,b8a6,c7d8,c7d6,c7b6,c7a5,f6d8,f6e7,f6g6,f6e6,f6d6,f6c6,f6b6,f6a6,f6g5,f6h4,f5c8,f5h7,f5d7,f5g6,f5e6,f5g4,f5e4,f5h3,f5d3,f5c2,f5b1,g7g6,b7b6,a7a6,h6h5,e5e4,d4d3,g7g5,b7b5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f5d7
+[tokens] prompt=58603  completion=11317  total=69920  [time] 364.7s
+[94mMADE MOVE 34: Player_Black f5d7[0m
+[94mMADE MOVE 35: Chess_Engine_BT4_Policy_White b4b5[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ⭘ ♜ ⭘ ♚ ⭘
+♟ ♟ ♝ ♝ ⭘ ♟ ♟ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ♙ ♙ ⭘ ♟ ⭘ ⭘ ⭘
+♕ ⭘ ♘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ♗ ♙ ♙ ♗ ♙
+♖ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn2r1k1/ppbb1pp1/5q1p/1PP1p3/Q1Np4/6P1/P2BPPBP/R4RK1 b - - 0 18
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8d8,e8c8,e8e7,e8e6,b8c6,b8a6,d7c8,d7e6,d7c6,d7f5,d7b5,d7g4,d7h3,c7d8,c7d6,c7b6,c7a5,f6d8,f6e7,f6g6,f6e6,f6d6,f6c6,f6b6,f6a6,f6g5,f6f5,f6h4,f6f4,f6f3,f6f2,g7g6,b7b6,a7a6,h6h5,e5e4,d4d3,g7g5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e5e4
+[tokens] prompt=70864  completion=14670  total=85534  [time] 462.0s
+[94mMADE MOVE 36: Player_Black e5e4[0m
+[94mMADE MOVE 37: Chess_Engine_BT4_Policy_White a1c1[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ⭘ ♜ ⭘ ♚ ⭘
+♟ ♟ ♝ ♝ ⭘ ♟ ♟ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ♙ ♙ ⭘ ⭘ ⭘ ⭘ ⭘
+♕ ⭘ ♘ ♟ ♟ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ♗ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn2r1k1/ppbb1pp1/5q1p/1PP5/Q1Npp3/6P1/P2BPPBP/2R2RK1 b - - 1 19
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8d8,e8c8,e8e7,e8e6,e8e5,b8c6,b8a6,d7c8,d7e6,d7c6,d7f5,d7b5,d7g4,d7h3,c7d8,c7d6,c7b6,c7e5,c7a5,c7f4,c7g3,f6d8,f6e7,f6g6,f6e6,f6d6,f6c6,f6b6,f6a6,f6g5,f6f5,f6e5,f6h4,f6f4,f6f3,f6f2,g7g6,b7b6,a7a6,h6h5,e4e3,d4d3,g7g5,a7a5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move a7a6
+[tokens] prompt=153899  completion=13781  total=167680  [time] 459.2s
+[94mMADE MOVE 38: Player_Black a7a6[0m
+[94mMADE MOVE 39: Chess_Engine_BT4_Policy_White c5c6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ⭘ ♜ ⭘ ♚ ⭘
+⭘ ♟ ♝ ♝ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♙ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ♙ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♕ ⭘ ♘ ♟ ♟ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ♗ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn2r1k1/1pbb1pp1/p1P2q1p/1P6/Q1Npp3/6P1/P2BPPBP/2R2RK1 b - - 0 20
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8d8,e8c8,e8e7,e8e6,e8e5,b8c6,a8a7,d7c8,d7e6,d7c6,d7f5,d7g4,d7h3,c7d8,c7d6,c7b6,c7e5,c7a5,c7f4,c7g3,f6d8,f6e7,f6g6,f6e6,f6d6,f6c6,f6g5,f6f5,f6e5,f6h4,f6f4,f6f3,f6f2,b7c6,a6b5,g7g6,b7b6,h6h5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move b7c6
+[tokens] prompt=119215  completion=9843  total=129058  [time] 517.4s
+[94mMADE MOVE 40: Player_Black b7c6[0m
+[94mMADE MOVE 41: Chess_Engine_BT4_Policy_White b5b6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ⭘ ♜ ⭘ ♚ ⭘
+⭘ ⭘ ♝ ♝ ⭘ ♟ ♟ ⭘
+♟ ♙ ♟ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♕ ⭘ ♘ ♟ ♟ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ♗ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn2r1k1/2bb1pp1/pPp2q1p/8/Q1Npp3/6P1/P2BPPBP/2R2RK1 b - - 0 21
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8d8,e8c8,e8e7,e8e6,e8e5,a8a7,d7c8,d7e6,d7f5,d7g4,d7h3,c7d8,c7d6,c7b6,c7e5,c7f4,c7g3,f6d8,f6e7,f6g6,f6e6,f6d6,f6g5,f6f5,f6e5,f6h4,f6f4,f6f3,f6f2,g7g6,h6h5,c6c5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move c7d8
+[tokens] prompt=147643  completion=20001  total=167644  [time] 748.9s
+[94mMADE MOVE 42: Player_Black c7d8[0m
+[94mMADE MOVE 43: Chess_Engine_BT4_Policy_White d2f4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ♝ ♜ ⭘ ♚ ⭘
+⭘ ⭘ ⭘ ♝ ⭘ ♟ ♟ ⭘
+♟ ♙ ♟ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+♕ ⭘ ♘ ♟ ♟ ♗ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn1br1k1/3b1pp1/pPp2q1p/8/Q1NppB2/6P1/P3PPBP/2R2RK1 b - - 2 22
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8e7,e8e6,e8e5,d8e7,d8c7,d8b6,a8a7,d7c8,d7e6,d7f5,d7g4,d7h3,f6e7,f6g6,f6e6,f6d6,f6g5,f6f5,f6e5,f6h4,f6f4,g7g6,h6h5,c6c5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move c6c5
+[tokens] prompt=113943  completion=12672  total=126615  [time] 449.1s
+[94mMADE MOVE 44: Player_Black c6c5[0m
+[94mMADE MOVE 45: Chess_Engine_BT4_Policy_White a4b3[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ♝ ♜ ⭘ ♚ ⭘
+⭘ ⭘ ⭘ ♝ ⭘ ♟ ♟ ⭘
+♟ ♙ ⭘ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♘ ♟ ♟ ♗ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn1br1k1/3b1pp1/pP3q1p/2p5/2NppB2/1Q4P1/P3PPBP/2R2RK1 b - - 1 23
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8e7,e8e6,e8e5,d8e7,d8c7,d8b6,b8c6,a8a7,d7c8,d7e6,d7c6,d7f5,d7b5,d7g4,d7a4,d7h3,f6e7,f6g6,f6e6,f6d6,f6c6,f6b6,f6g5,f6f5,f6e5,f6h4,f6f4,g7g6,h6h5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d7c6
+[tokens] prompt=82825  completion=9790  total=92615  [time] 321.8s
+[94mMADE MOVE 46: Player_Black d7c6[0m
+[94mMADE MOVE 47: Chess_Engine_BT4_Policy_White b6b7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+♜ ♞ ⭘ ♝ ♜ ⭘ ♚ ⭘
+⭘ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♝ ⭘ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♘ ♟ ♟ ♗ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: rn1br1k1/1P3pp1/p1b2q1p/2p5/2NppB2/1Q4P1/P3PPBP/2R2RK1 b - - 0 24
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8e7,e8e6,e8e5,d8e7,d8c7,d8b6,d8a5,b8d7,a8a7,f6e7,f6g6,f6e6,f6d6,f6g5,f6f5,f6e5,f6h4,f6f4,c6d7,c6b7,c6d5,c6b5,c6a4,g7g6,h6h5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move a8a7
+[tokens] prompt=55380  completion=7718  total=63098  [time] 283.4s
+[94mMADE MOVE 48: Player_Black a8a7[0m
+[94mMADE MOVE 49: Chess_Engine_BT4_Policy_White c4d6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ♝ ♜ ⭘ ♚ ⭘
+♜ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♝ ♘ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ♟ ♗ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: 1n1br1k1/rP3pp1/p1bN1q1p/2p5/3ppB2/1Q4P1/P3PPBP/2R2RK1 b - - 2 25
+
+Legal moves (UCI): g8h8,g8f8,g8h7,e8f8,e8e7,e8e6,e8e5,d8e7,d8c7,d8b6,d8a5,b8d7,a7a8,a7b7,f6e7,f6g6,f6e6,f6d6,f6g5,f6f5,f6e5,f6h4,f6f4,c6d7,c6b7,c6d5,c6b5,c6a4,g7g6,h6h5,a6a5,c5c4,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e8e6
+[tokens] prompt=174537  completion=12496  total=187033  [time] 503.6s
+[94mMADE MOVE 50: Player_Black e8e6[0m
+[94mMADE MOVE 51: Chess_Engine_BT4_Policy_White c1c5[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+♜ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♝ ♘ ♜ ♛ ⭘ ♟
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ♟ ♗ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: 1n1b2k1/rP3pp1/p1bNrq1p/2R5/3ppB2/1Q4P1/P3PPBP/5RK1 b - - 0 26
+
+Legal moves (UCI): g8h8,g8f8,g8h7,d8e7,d8c7,d8b6,d8a5,b8d7,a7a8,a7b7,f6e7,f6g6,f6g5,f6f5,f6e5,f6h4,f6f4,e6e8,e6e7,e6d6,e6e5,c6e8,c6d7,c6b7,c6d5,c6b5,c6a4,g7g6,h6h5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e6d6
+[tokens] prompt=135233  completion=18188  total=153421  [time] 624.6s
+[94mMADE MOVE 52: Player_Black e6d6[0m
+[94mMADE MOVE 53: Chess_Engine_BT4_Policy_White c5c6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+♜ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♖ ♜ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ♟ ♗ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: 1n1b2k1/rP3pp1/p1Rr1q1p/8/3ppB2/1Q4P1/P3PPBP/5RK1 b - - 0 27
+
+Legal moves (UCI): g8h8,g8f8,g8h7,d8e7,d8c7,d8b6,d8a5,b8d7,b8c6,a7a8,a7b7,f6e7,f6g6,f6e6,f6g5,f6f5,f6e5,f6h4,f6f4,d6d7,d6e6,d6c6,d6d5,g7g6,h6h5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move b8c6
+[tokens] prompt=107053  completion=14862  total=121915  [time] 543.7s
+[94mMADE MOVE 54: Player_Black b8c6[0m
+[94mMADE MOVE 55: Chess_Engine_BT4_Policy_White f4d6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+♜ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♞ ♗ ⭘ ♛ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ♟ ⭘ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ♗ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: 3b2k1/rP3pp1/p1nB1q1p/8/3pp3/1Q4P1/P3PPBP/5RK1 b - - 0 28
+
+Legal moves (UCI): g8h8,g8h7,d8e7,d8c7,d8b6,d8a5,a7a8,a7b7,f6e7,f6g6,f6e6,f6d6,f6g5,f6f5,f6e5,f6h4,f6f4,f6f3,f6f2,c6b8,c6e7,c6e5,c6a5,c6b4,g7g6,h6h5,a6a5,e4e3,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f6d6
+[tokens] prompt=46070  completion=6702  total=52772  [time] 229.8s
+[94mMADE MOVE 56: Player_Black f6d6[0m
+[94mMADE MOVE 57: Chess_Engine_BT4_Policy_White g2e4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+♜ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ♞ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ♗ ⭘ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ♖ ♔ ⭘
+
+FEN: 3b2k1/rP3pp1/p1nq3p/8/3pB3/1Q4P1/P3PP1P/5RK1 b - - 0 29
+
+Legal moves (UCI): g8h8,g8f8,d8e7,d8c7,d8f6,d8b6,d8g5,d8a5,d8h4,a7a8,a7b7,d6f8,d6b8,d6e7,d6d7,d6c7,d6g6,d6f6,d6e6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,c6b8,c6e7,c6e5,c6a5,c6b4,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move c6b8
+[tokens] prompt=156477  completion=20266  total=176743  [time] 663.1s
+[94mMADE MOVE 58: Player_Black c6b8[0m
+[94mMADE MOVE 59: Chess_Engine_BT4_Policy_White f1c1[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+♜ ♙ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ♗ ⭘ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 1n1b2k1/rP3pp1/p2q3p/8/3pB3/1Q4P1/P3PP1P/2R3K1 b - - 2 30
+
+Legal moves (UCI): g8h8,g8f8,d8e7,d8c7,d8f6,d8b6,d8g5,d8a5,d8h4,b8d7,b8c6,a7a8,a7b7,d6f8,d6e7,d6d7,d6c7,d6g6,d6f6,d6e6,d6c6,d6b6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d8c7
+[tokens] prompt=405721  completion=33124  total=438845  [time] 1228.4s
+[94mMADE MOVE 60: Player_Black d8c7[0m
+[94mMADE MOVE 61: Chess_Engine_BT4_Policy_White b3c4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ⭘ ⭘ ⭘ ♚ ⭘
+♜ ♙ ♝ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♕ ♟ ♗ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 1n4k1/rPb2pp1/p2q3p/8/2QpB3/6P1/P3PP1P/2R3K1 b - - 4 31
+
+Legal moves (UCI): g8h8,g8f8,b8d7,b8c6,c7d8,c7b6,c7a5,a7a8,a7b7,d6f8,d6d8,d6e7,d6d7,d6g6,d6f6,d6e6,d6c6,d6b6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move a7b7
+[tokens] prompt=789861  completion=38518  total=828379  [time] 1491.9s
+[94mMADE MOVE 62: Player_Black a7b7[0m
+[94mMADE MOVE 63: Chess_Engine_BT4_Policy_White e4b7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ⭘ ⭘ ⭘ ♚ ⭘
+⭘ ♗ ♝ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♕ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 1n4k1/1Bb2pp1/p2q3p/8/2Qp4/6P1/P3PP1P/2R3K1 b - - 0 32
+
+Legal moves (UCI): g8h8,g8f8,g8h7,b8d7,b8c6,c7d8,c7b6,c7a5,d6f8,d6d8,d6e7,d6d7,d6g6,d6f6,d6e6,d6c6,d6b6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move c7d8
+[tokens] prompt=233469  completion=29007  total=262476  [time] 1111.8s
+[94mMADE MOVE 64: Player_Black c7d8[0m
+[94mMADE MOVE 65: Chess_Engine_BT4_Policy_White b7d5[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ♞ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♟ ♟ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ♗ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♕ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 1n1b2k1/5pp1/p2q3p/3B4/2Qp4/6P1/P3PP1P/2R3K1 b - - 2 33
+
+Legal moves (UCI): g8h8,g8f8,g8h7,d8e7,d8c7,d8f6,d8b6,d8g5,d8a5,d8h4,b8d7,b8c6,d6f8,d6e7,d6d7,d6c7,d6g6,d6f6,d6e6,d6c6,d6b6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move b8d7
+[tokens] prompt=896797  completion=32501  total=929298  [time] 1474.9s
+[94mMADE MOVE 66: Player_Black b8d7[0m
+[94mMADE MOVE 67: Chess_Engine_BT4_Policy_White d5f7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ♚ ⭘
+⭘ ⭘ ⭘ ♞ ⭘ ♗ ♟ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♕ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b2k1/3n1Bp1/p2q3p/8/2Qp4/6P1/P3PP1P/2R3K1 b - - 0 34
+
+Legal moves (UCI): g8h8,g8f8,g8h7
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move g8f8
+[tokens] prompt=51925  completion=9282  total=61207  [time] 307.7s
+[94mMADE MOVE 68: Player_Black g8f8[0m
+[94mMADE MOVE 69: Chess_Engine_BT4_Policy_White f7e6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ♚ ⭘ ⭘
+⭘ ⭘ ⭘ ♞ ⭘ ⭘ ♟ ⭘
+♟ ⭘ ⭘ ♛ ♗ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ♕ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b1k2/3n2p1/p2qB2p/8/2Qp4/6P1/P3PP1P/2R3K1 b - - 2 35
+
+Legal moves (UCI): f8e8,f8e7,d8e7,d8c7,d8f6,d8b6,d8g5,d8a5,d8h4,d7b8,d7f6,d7b6,d7e5,d7c5,d6b8,d6e7,d6c7,d6e6,d6c6,d6b6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d7e5
+[tokens] prompt=96187  completion=10725  total=106912  [time] 409.8s
+[94mMADE MOVE 70: Player_Black d7e5[0m
+[94mMADE MOVE 71: Chess_Engine_BT4_Policy_White c4c8[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ♕ ♝ ⭘ ♚ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+♟ ⭘ ⭘ ♛ ♗ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ♞ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 2Qb1k2/6p1/p2qB2p/4n3/3p4/6P1/P3PP1P/2R3K1 b - - 4 36
+
+Legal moves (UCI): f8e8,f8e7,d6b8,d6e7,d6d7,d6c7,d6e6,d6c6,d6b6,d6d5,d6c5,d6b4,d6a3,e5f7,e5d7,e5g6,e5c6,e5g4,e5c4,e5f3,e5d3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f8e7
+[tokens] prompt=26225  completion=6413  total=32638  [time] 226.9s
+[94mMADE MOVE 72: Player_Black f8e7[0m
+[94mMADE MOVE 73: Chess_Engine_BT4_Policy_White e6b3[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ♕ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ♚ ⭘ ♟ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ♞ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ♖ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 2Qb4/4k1p1/p2q3p/4n3/3p4/1B4P1/P3PP1P/2R3K1 b - - 6 37
+
+Legal moves (UCI): d8c7,d8b6,d8a5,e7f8,e7e8,e7f6,d6b8,d6d7,d6c7,d6g6,d6f6,d6e6,d6c6,d6b6,d6d5,d6c5,d6b4,d6a3,e5f7,e5d7,e5g6,e5c6,e5g4,e5c4,e5f3,e5d3,g7g6,h6h5,a6a5,d4d3,g7g5
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move g7g5
+[tokens] prompt=141838  completion=9916  total=151754  [time] 389.6s
+[94mMADE MOVE 74: Player_Black g7g5[0m
+[94mMADE MOVE 75: Chess_Engine_BT4_Policy_White c1c5[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ♕ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ♚ ⭘ ⭘ ⭘
+♟ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ♖ ⭘ ♞ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 2Qb4/4k3/p2q3p/2R1n1p1/3p4/1B4P1/P3PP1P/6K1 b - - 1 38
+
+Legal moves (UCI): d8c7,d8b6,d8a5,e7f8,e7e8,e7f6,d6b8,d6d7,d6c7,d6g6,d6f6,d6e6,d6c6,d6b6,d6d5,d6c5,e5f7,e5d7,e5g6,e5c6,e5g4,e5c4,e5f3,e5d3,h6h5,a6a5,g5g4,d4d3
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e5d7
+[tokens] prompt=701001  completion=49970  total=750971  [time] 1633.4s
+[94mMADE MOVE 76: Player_Black e5d7[0m
+[94mMADE MOVE 77: Chess_Engine_BT4_Policy_White c5c6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ♕ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♞ ♚ ⭘ ⭘ ⭘
+♟ ⭘ ♖ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 2Qb4/3nk3/p1Rq3p/6p1/3p4/1B4P1/P3PP1P/6K1 b - - 3 39
+
+Legal moves (UCI): d8c7,d8b6,d8a5,e7f8,e7e8,e7f6,d7f8,d7b8,d7f6,d7b6,d7e5,d7c5,d6b8,d6c7,d6g6,d6f6,d6e6,d6c6,d6e5,d6d5,d6c5,d6f4,d6b4,d6g3,d6a3,h6h5,a6a5,g5g4,d4d3
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d7b6
+[tokens] prompt=96856  completion=13369  total=110225  [time] 650.4s
+[94mMADE MOVE 78: Player_Black d7b6[0m
+[94mMADE MOVE 79: Chess_Engine_BT4_Policy_White c8b7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ♕ ⭘ ⭘ ♚ ⭘ ⭘ ⭘
+♟ ♞ ♖ ♛ ⭘ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b4/1Q2k3/pnRq3p/6p1/3p4/1B4P1/P3PP1P/6K1 b - - 5 40
+
+Legal moves (UCI): e7f8,e7e8,e7f6,d8c7,d6d7,d6c7,b6d7
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d6d7
+[tokens] prompt=4333  completion=2106  total=6439  [time] 67.6s
+[94mMADE MOVE 80: Player_Black d6d7[0m
+[94mMADE MOVE 81: Chess_Engine_BT4_Policy_White c6e6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ♕ ⭘ ♛ ♚ ⭘ ⭘ ⭘
+♟ ♞ ⭘ ⭘ ♖ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b4/1Q1qk3/pn2R2p/6p1/3p4/1B4P1/P3PP1P/6K1 b - - 7 41
+
+Legal moves (UCI): e7f8,e7f7
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move e7f8
+[tokens] prompt=4313  completion=7955  total=12268  [time] 244.3s
+[94mMADE MOVE 82: Player_Black e7f8[0m
+[94mMADE MOVE 83: Chess_Engine_BT4_Policy_White b7e4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ♚ ⭘ ⭘
+⭘ ⭘ ⭘ ♛ ⭘ ⭘ ⭘ ⭘
+♟ ♞ ⭘ ⭘ ♖ ⭘ ⭘ ♟
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ♕ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b1k2/3q4/pn2R2p/6p1/3pQ3/1B4P1/P3PP1P/6K1 b - - 9 42
+
+Legal moves (UCI): f8g8,f8g7,f8f7,d8e7,d8c7,d8f6,d7e8,d7c8,d7h7,d7g7,d7f7,d7e7,d7c7,d7b7,d7a7,d7e6,d7d6,d7c6,d7d5,d7b5,d7a4,b6c8,b6a8,b6d5,b6c4,b6a4,h6h5,a6a5,g5g4,d4d3
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d7f7
+[tokens] prompt=213286  completion=26097  total=239383  [time] 879.9s
+[94mMADE MOVE 84: Player_Black d7f7[0m
+[94mMADE MOVE 85: Chess_Engine_BT4_Policy_White e6h6[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ♚ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♛ ⭘ ⭘
+♟ ♞ ⭘ ⭘ ⭘ ⭘ ⭘ ♖
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ♕ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b1k2/5q2/pn5R/6p1/3pQ3/1B4P1/P3PP1P/6K1 b - - 0 43
+
+Legal moves (UCI): f8g8,f8g7,d8e7,d8c7,d8f6,f7g8,f7e8,f7h7,f7g7,f7e7,f7d7,f7c7,f7b7,f7a7,f7g6,f7f6,f7e6,f7h5,f7f5,f7d5,f7f4,f7c4,f7f3,f7b3,f7f2,b6c8,b6a8,b6d7,b6d5,b6c4,b6a4,a6a5,g5g4,d4d3
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move b6c4
+[tokens] prompt=263541  completion=21842  total=285383  [time] 826.8s
+[94mMADE MOVE 86: Player_Black b6c4[0m
+[94mMADE MOVE 87: Chess_Engine_BT4_Policy_White h6h8[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ♚ ⭘ ♖
+⭘ ⭘ ⭘ ⭘ ⭘ ♛ ⭘ ⭘
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ♞ ♟ ♕ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b1k1R/5q2/p7/6p1/2npQ3/1B4P1/P3PP1P/6K1 b - - 2 44
+
+Legal moves (UCI): f8g7,f7g8
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f8g7
+[tokens] prompt=34921  completion=7171  total=42092  [time] 230.1s
+[94mMADE MOVE 88: Player_Black f8g7[0m
+[94mMADE MOVE 89: Chess_Engine_BT4_Policy_White h8h7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♛ ♚ ♖
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ♞ ♟ ♕ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b4/5qkR/p7/6p1/2npQ3/1B4P1/P3PP1P/6K1 b - - 4 45
+
+Legal moves (UCI): g7g8,g7f8,g7f6
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move g7f8
+[tokens] prompt=65406  completion=15512  total=80918  [time] 505.5s
+[94mMADE MOVE 90: Player_Black g7f8[0m
+[94mMADE MOVE 91: Chess_Engine_BT4_Policy_White h7f7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ♚ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♖ ⭘ ⭘
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ♞ ♟ ♕ ⭘ ⭘ ⭘
+⭘ ♗ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b1k2/5R2/p7/6p1/2npQ3/1B4P1/P3PP1P/6K1 b - - 0 46
+
+Legal moves (UCI): f8g8,f8f7
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f8f7
+[tokens] prompt=4313  completion=1149  total=5462  [time] 39.2s
+[94mMADE MOVE 92: Player_Black f8f7[0m
+[94mMADE MOVE 93: Chess_Engine_BT4_Policy_White b3c4[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♚ ⭘ ⭘
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ♗ ♟ ♕ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b4/5k2/p7/6p1/2BpQ3/6P1/P3PP1P/6K1 b - - 0 47
+
+Legal moves (UCI): f7f8,f7g7,f7f6
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move f7g7
+[tokens] prompt=39124  completion=13292  total=52416  [time] 411.1s
+[94mMADE MOVE 94: Player_Black f7g7[0m
+[94mMADE MOVE 95: Chess_Engine_BT4_Policy_White e4e8[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ♕ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♚ ⭘
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ♗ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3bQ3/6k1/p7/6p1/2Bp4/6P1/P3PP1P/6K1 b - - 2 48
+
+Legal moves (UCI): d8e7,d8c7,d8f6,d8b6,d8a5,g7h7,g7h6,g7f6,a6a5,g5g4,d4d3
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move g7h6
+[tokens] prompt=65322  completion=8235  total=73557  [time] 270.9s
+[94mMADE MOVE 96: Player_Black g7h6[0m
+[94mMADE MOVE 97: Chess_Engine_BT4_Policy_White e8f7[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ♝ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♕ ⭘ ⭘
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♚
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ♗ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 3b4/5Q2/p6k/6p1/2Bp4/6P1/P3PP1P/6K1 b - - 4 49
+
+Legal moves (UCI): d8e7,d8c7,d8f6,d8b6,d8a5,a6a5,g5g4,d4d3
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move d8a5
+[tokens] prompt=38213  completion=6308  total=44521  [time] 207.5s
+[94mMADE MOVE 98: Player_Black d8a5[0m
+[94mMADE MOVE 99: Chess_Engine_BT4_Policy_White c4d3[0m
+
+================ PROMPT -> Player_Black (black) ================
+You are playing chess as black. Choose the strongest legal move.
+
+Board:
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ⭘ ⭘ ♕ ⭘ ⭘
+♟ ⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♚
+♝ ⭘ ⭘ ⭘ ⭘ ⭘ ♟ ⭘
+⭘ ⭘ ⭘ ♟ ⭘ ⭘ ⭘ ⭘
+⭘ ⭘ ⭘ ♗ ⭘ ⭘ ♙ ⭘
+♙ ⭘ ⭘ ⭘ ♙ ♙ ⭘ ♙
+⭘ ⭘ ⭘ ⭘ ⭘ ⭘ ♔ ⭘
+
+FEN: 8/5Q2/p6k/b5p1/3p4/3B2P1/P3PP1P/6K1 b - - 6 50
+
+Legal moves (UCI): a5d8,a5c7,a5b6,a5b4,a5c3,a5d2,a5e1,g5g4
+
+Reply with your move as the FINAL line, exactly as: make_move <UCI>  (e.g. make_move e2e4). Pick a move verbatim from the Legal moves list. You may reason first, but the last line must be that.
+---------------- RESPONSE <- Player_Black ----------------
+make_move g5g4
+[tokens] prompt=4333  completion=1564  total=5897  [time] 51.4s
+[94mMADE MOVE 100: Player_Black g5g4[0m
+[94mMADE MOVE 101: Chess_Engine_BT4_Policy_White f7g6[0m
 [92m
 GAME OVER
 [0m
-[92mNONE wins due to ERROR OCCURED.[0m
-[92mNumber of moves made: 15[0m
+[92mChess_Engine_BT4_Policy_White wins due to Checkmate.[0m
+[92mNumber of moves made: 101[0m
 
 Wrong Moves (LLM asked to make illegal/impossible move):
 Player White: 0
@@ -229,30 +1216,33 @@ Player White: 0
 Player Black: 0
 
 Material Count:
-Player White: 39
-Player Black: 38
+Player White: 17
+Player Black: 6
 
 Accumulated Reply Time (seconds):
 Player White: 0.000
-Player Black: 193.051
+Player Black: 22600.411
 
 [96mGame PGN:[0m
 [Event "Chess Game"]
 [Date "2026.09.06"]
 [White "Player White"]
 [Black "Player Black"]
-[Result "1/2-1/2"]
+[Result "1-0"]
 
-1. Nf3 d5 2. d4 Nf6 3. c4 e6 4. g3 Bb4+ 5. Bd2 Be7 
-6. Qc2 O-O 7. Bg2 c5 8. dxc5  1/2-1/2
+1. Nf3 d5 2. d4 Nf6 3. c4 e6 4. g3 Bb4+ 5. Bd2 Be7
+6. Qc2 O-O 7. Bg2 c5 8. dxc5 d4 9. O-O Bxc5 10. b4 Bb6
+11. c5 Bc7 12. Na3 e5 13. Nc4 Re8 14. Ng5 h6 15. Ne4 Bf5
+16. Nxf6+ Qxf6 17. Qa4 Bd7 18. b5 e4 19. Rac1 a6 20. c6 bxc6
+21. b6 Bd8 22. Bf4 c5 23. Qb3 Bc6 24. b7 Ra7 25. Nd6 Re6
+26. Rxc5 Rxd6 27. Rxc6 Nxc6 28. Bxd6 Qxd6 29. Bxe4 Nb8 30. Rc1 Bc7
+31. Qc4 Rxb7 32. Bxb7 Bd8 33. Bd5 Nd7 34. Bxf7+ Kf8 35. Be6 Ne5
+36. Qc8 Ke7 37. Bb3 g5 38. Rc5 Nd7 39. Rc6 Nb6 40. Qb7+ Qd7
+41. Re6+ Kf8 42. Qe4 Qf7 43. Rxh6 Nc4 44. Rh8+ Kg7 45. Rh7+ Kf8
+46. Rxf7+ Kxf7 47. Bxc4+ Kg7 48. Qe8 Kh6 49. Qf7 Ba5 50. Bd3 g4
+51. Qg6#  1-0
 
 Costs per agent (white and black):
 
 {'total_cost': 0}
 {'total_cost': 0}
-Traceback (most recent call last):
-  File "/home/privateclient/misc/llm_chess/run_maia_concurrent.py", line 347, in _run_child
-    _worker(ca)
-  File "/home/privateclient/misc/llm_chess/run_maia_concurrent.py", line 198, in _worker
-    raise RuntimeError(f"Game failed; see {args.out}/output.txt (not counted as a draw)")
-RuntimeError: Game failed; see _logs/oauth-simple/engine_vs_llm/bt4-policy/gpt-6-astra-max/2026-09-06-06-02-23-p1225456_black_j13/output.txt (not counted as a draw)
