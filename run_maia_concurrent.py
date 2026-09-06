@@ -54,6 +54,10 @@ MAIA_ELOS = [600, 800, 1000, 1200, 1400]
 MAIA = llm_chess.PlayerType.CHESS_ENGINE_MAIA
 
 
+def _opponent_label(elo, args):
+    return "bt4-policy" if getattr(args, "opponent", "maia") == "bt4-policy" else f"maia-elo-{elo}"
+
+
 # --------------------------------------------------------------------------- helpers
 def _slug(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", name or "").strip("-") or "llm"
@@ -143,11 +147,16 @@ def _worker(args):
     """Play ONE game vs the shared Maia server; print transcript to stdout; write aggregate."""
     llm_chess.maia_server = args.socket          # -> ChessEngineMaiaAgent goes remote
     llm_chess.maia_elo = args.elo                # for metadata only (server owns strength)
+    opponent_type = MAIA
+    bt4 = getattr(args, "opponent", "maia") == "bt4-policy"
+    if bt4:
+        opponent_type = llm_chess.PlayerType.CHESS_ENGINE_BT4_POLICY
+        llm_chess.bt4_server = args.socket
     if args.color == "white":
         llm_chess.white_player_type = llm_chess.PlayerType.LLM_WHITE
-        llm_chess.black_player_type = MAIA
+        llm_chess.black_player_type = opponent_type
     else:
-        llm_chess.white_player_type = MAIA
+        llm_chess.white_player_type = opponent_type
         llm_chess.black_player_type = llm_chess.PlayerType.LLM_BLACK
     llm_chess.remove_text = llm_chess.DEFAULT_REMOVE_TEXT_REGEX
     llm_chess.max_api_retries = 6
@@ -157,6 +166,16 @@ def _worker(args):
     cfg_w, cfg_b = get_llms(white_hyperparams=hp, black_hyperparams=hp)
 
     os.makedirs(args.out, exist_ok=True)
+    if bt4:
+        from bt4_policy_server import engine_metadata
+        metadata = getattr(args, "bt4_metadata", None) or engine_metadata(args.lc0_path, args.bt4_weights)
+        with open(os.path.join(args.out, "run_config.json"), "w", encoding="utf-8") as handle:
+            json.dump({"engine": metadata, "llm_color": args.color,
+                       "model": _model_of_config(cfg_w if args.color == "white" else cfg_b),
+                       "reasoning_effort": args.reasoning_effort, "prompt_type": args.prompt,
+                       "llm_config": {"auth": "chatgpt_oauth" if
+                         (cfg_w if args.color == "white" else cfg_b)["config_list"][0].get("model_client_cls") == "OpenAIOAuthClient"
+                         else "configured_provider"}}, handle, indent=2)
     prompt_mode = getattr(args, "prompt", "standard")
     if prompt_mode == "sf-explain-with-correction":
         stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
@@ -189,6 +208,9 @@ def _worker(args):
     agg["reasoning_effort"] = getattr(args, "reasoning_effort", None)  # so the table separates effort tiers
     agg["player_white"] = {"name": pw.name, "model": _model_of(pw)}
     agg["player_black"] = {"name": pb.name, "model": _model_of(pb)}
+    if bt4:
+        agg["opponent"] = "bt4-policy"
+        agg["engine"] = metadata
     with open(os.path.join(args.out, "_aggregate_results.json"), "w", encoding="utf-8") as f:
         json.dump(agg, f, indent=2)
 
@@ -196,6 +218,8 @@ def _worker(args):
 # --------------------------------------------------------------------------- servers
 def _start_servers(elos, args):
     """Launch one maia_server.py per Elo; return {elo: (socket_path, Popen)} once all ready."""
+    if getattr(args, "opponent", "maia") == "bt4-policy":
+        return _start_bt4_server(args)
     servers = {}
     for elo in elos:
         sock = f"/tmp/maia-{elo}-{os.getpid()}.sock"
@@ -229,6 +253,31 @@ def _start_servers(elos, args):
                 time.sleep(0.3)
         print(f"[server] maia-elo-{elo} ready ({sock})", flush=True)
     return servers
+
+
+def _start_bt4_server(args):
+    sock = f"/tmp/bt4-policy-{os.getpid()}.sock"
+    command = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "bt4_policy_server.py"),
+               "--socket", sock, "--lc0-path", args.lc0_path, "--weights", args.bt4_weights]
+    with open("bt4_policy_server.log", "w") as log:
+        proc = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+    servers = {0: (sock, proc)}  # Internal job key only; BT4 has no assigned Elo.
+    try:
+        deadline = time.monotonic() + args.server_ready_timeout
+        while time.monotonic() < deadline:
+            if proc.poll() is not None:
+                raise RuntimeError("BT4 policy server exited; see bt4_policy_server.log")
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                try:
+                    probe.connect(sock)
+                    print(f"[server] bt4-policy ready ({sock})", flush=True)
+                    return servers
+                except OSError:
+                    time.sleep(0.3)
+        raise RuntimeError("BT4 policy server startup timeout; see bt4_policy_server.log")
+    except BaseException:
+        _stop_servers(servers)
+        raise
 
 
 def _stop_servers(servers):
@@ -350,7 +399,7 @@ def _run_forked(args, jobs, servers, folder_for):
             failures += int(rc != 0)
             done += 1
             tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
-            print(f"[{done}/{total}] maia-elo-{elo} {color} {tag}", flush=True)
+            print(f"[{done}/{total}] {_opponent_label(elo, args)} {color} {tag}", flush=True)
     finally:
         for pid in list(running):  # on error/interrupt, don't leave orphaned games
             try:
@@ -386,6 +435,12 @@ def _preflight_oauth(configs, prompt):
 
 def _launch(args):
     colors = ["white", "black"] if args.colors == "both" else [args.colors]
+    bt4 = getattr(args, "opponent", "maia") == "bt4-policy"
+    if bt4:
+        if args.prompt not in ("simple", "simple-sans", "simple-explain", "simple-sans-explain") or args.sf_order:
+            raise ValueError("BT4 policy supports the simple harness without Stockfish assistance")
+        from bt4_policy_server import engine_metadata
+        args.bt4_metadata = engine_metadata(args.lc0_path, args.bt4_weights)
 
     # Validate .env + model slug once (fail fast before spinning up servers).
     cfg_w, cfg_b = get_llms(white_hyperparams=_hyperparams(args), black_hyperparams=_hyperparams(args))
@@ -396,18 +451,19 @@ def _launch(args):
     if getattr(args, "reasoning_effort", None):
         model_slug = f"{model_slug}-{args.reasoning_effort}"
 
+    elos = [0] if bt4 else args.elos
     jobs = [(elo, color, i)
-            for elo in args.elos for color in colors for i in range(args.reps)]
+            for elo in elos for color in colors for i in range(args.reps)]
     # Per-launch id: timestamp + launcher PID, so folders are unique within a run (idx+color)
     # AND across re-runs (different PID) — the per-game JSON is only minute-resolution, so each
     # game must get its own folder to avoid clobbering.
     ts = time.strftime("%Y-%m-%d-%H-%M-%S") + f"-p{os.getpid()}"
     mode = "spawn" if args.spawn else "fork"
     print(f"[plan] {len(jobs)} games "
-          f"({len(args.elos)} anchors x {len(colors)} colors x {args.reps} reps), "
+          f"({len(elos)} opponents x {len(colors)} colors x {args.reps} reps), "
           f"concurrency={args.concurrency}, mode={mode}, model={model_slug}", flush=True)
 
-    servers = _start_servers(args.elos, args)
+    servers = _start_servers(elos, args)
     sf_proc = None
     sf_sock = None
     need_sf = args.sf_order or args.prompt == "sf-explain-with-correction"
@@ -417,7 +473,7 @@ def _launch(args):
     self_path = os.path.abspath(__file__)
 
     def folder_for(elo, color, idx):
-        folder = os.path.join(args.logs_root, "engine_vs_llm", f"maia-elo-{elo}",
+        folder = os.path.join(args.logs_root, "engine_vs_llm", _opponent_label(elo, args),
                               model_slug, f"{ts}_{color}_j{idx}")
         os.makedirs(folder, exist_ok=True)
         return folder
@@ -430,6 +486,8 @@ def _launch(args):
                "--out", folder]
         cmd += ["--thinking"] if args.thinking else ["--no-thinking"]
         cmd += ["--prompt", args.prompt]
+        if bt4:
+            cmd += ["--opponent", "bt4-policy", "--lc0-path", args.lc0_path, "--bt4-weights", args.bt4_weights]
         cmd += ["--thinking-style", args.thinking_style]
         if args.reasoning_effort is not None:
             cmd += ["--reasoning-effort", args.reasoning_effort]
@@ -460,7 +518,7 @@ def _launch(args):
                     done += 1
                     failures += int(rc != 0)
                     tag = "ok" if rc == 0 else f"FAILED(rc={rc})"
-                    print(f"[{done}/{len(jobs)}] maia-elo-{elo} {color} {tag}", flush=True)
+                    print(f"[{done}/{len(jobs)}] {_opponent_label(elo, args)} {color} {tag}", flush=True)
             if failures:
                 raise RuntimeError(f"{failures}/{len(jobs)} games failed; inspect their output.txt logs")
         else:
@@ -476,11 +534,15 @@ def _launch(args):
                     sf_proc.kill()
                 except Exception:
                     pass
-    print("=== all games complete ===  now run: python data/maia_elo.py", flush=True)
+    print("=== all games complete ===" + ("" if bt4 else "  now run: python data/maia_elo.py"), flush=True)
 
 
 def main():
     ap = argparse.ArgumentParser()
+    from bt4_policy_server import DEFAULT_LC0, DEFAULT_WEIGHTS
+    ap.add_argument("--opponent", choices=["maia", "bt4-policy"], default="maia")
+    ap.add_argument("--lc0-path", default=DEFAULT_LC0, help="LC0 0.33+ CPU executable for BT4-tf13tune")
+    ap.add_argument("--bt4-weights", default=DEFAULT_WEIGHTS, help="BT4-tf13tune.pb.gz network")
     ap.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     # worker-only:
     ap.add_argument("--elo", type=int)

@@ -624,6 +624,25 @@ class ChessEngineDragonAgent(GameAgent):
             return None
 
 
+class ChessEngineBT4PolicyAgent(GameAgent):
+    """Shared BT4 policy opponent; failures propagate as infrastructure errors."""
+
+    def __init__(self, board, socket_path, *args, **kwargs):
+        super().__init__(*args, llm_config=False, **kwargs)
+        self.board = board
+        self.socket_path = socket_path
+
+    def generate_reply(self, messages=None, **kwargs):
+        from maia_server import request_move
+        move = request_move(self.socket_path, [m.uci() for m in self.board.move_stack], timeout=7200)
+        if chess.Move.from_uci(move) not in self.board.legal_moves:
+            raise RuntimeError("BT4 policy server returned an illegal move")
+        return f"make_move {move}"
+
+    def close(self):
+        pass  # The launcher owns the shared engine.
+
+
 class ChessEngineMaiaAgent(GameAgent):
     """
     A chess agent that uses the Maia 3 human-like engine as a fixed-strength,

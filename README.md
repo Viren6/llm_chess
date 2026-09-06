@@ -136,6 +136,58 @@ still controls Astra. The concurrent launcher checks OAuth and model access befo
 starting Maia or game workers. Execution errors produce failed workers and a nonzero
 launcher exit status, and are excluded from score aggregates.
 
+### BT4 policy opponent (LC0 CPU, one node)
+
+Swap the Maia anchor for `--opponent bt4-policy`:
+
+```bash
+MODEL_KIND_W=openai_oauth MODEL_KIND_B=openai_oauth \
+OPENAI_MODEL_NAME_W=gpt-6-astra OPENAI_MODEL_NAME_B=gpt-6-astra \
+.venv/bin/python run_maia_concurrent.py \
+  --opponent bt4-policy --reps 20 --colors both --concurrency 20 \
+  --prompt simple --reasoning-effort max --no-thinking \
+  --logs-root _logs/oauth-simple
+```
+
+This preserves the 40-game format, 20 games per LLM color, subscription OAuth,
+max reasoning, and the existing simple UCI prompts. One shared LC0 process uses
+the **BLAS CPU backend** and LC0's dedicated **`policyhead`** mode, which selects
+the highest-policy legal move from one root-position evaluation. Every request
+sends `go nodes 1`; the server rejects responses that do not report exactly one
+node. No search tree is reused between requests, the neural cache is disabled,
+and each position includes its full game history. See the
+[LC0 search documentation](https://lczero.org/dev/overview/#search-algorithm-framework).
+
+The exact network is [BT4-tf13tune.pb.gz](https://storage.lczero.org/files/networks-contrib/big-transformers/BT4-tf13tune.pb.gz),
+SHA256 `2696d3f49ad56412ad24bdcbf14c81c9c459197f93d7d0d6f95cb61d3b51e435`.
+The launcher checks this hash before starting workers. This network requires
+LC0 **0.33 or newer**; the 0.32.1 release cannot load it.
+
+The local setup uses LC0 source commit `3c99ccb1282ba2ed4f061109ab5d12b4cf842c64`,
+built with OpenBLAS using:
+
+```bash
+meson setup build -Dbuildtype=release -Dplain_cuda=false \
+  -Dblas=true -Dopenblas=true -Dispc=false -Dgtest=false
+ninja -C build -j 4
+```
+
+Build prerequisites on Ubuntu are `build-essential meson ninja-build libopenblas-dev
+libeigen3-dev zlib1g-dev`. Default paths, already installed on this machine:
+
+- LC0: `~/.local/share/llm-chess/lc0/source/build/lc0`
+- Weights: `~/.local/share/llm-chess/networks/BT4-tf13tune.pb.gz`
+
+Override these with `--lc0-path` and `--bt4-weights` when using another installation
+of the same network. Downloaders may need a browser User-Agent (e.g. `curl -fL -A
+'Mozilla/5.0'`) for the storage server.
+
+Logs go under `_logs/oauth-simple/engine_vs_llm/bt4-policy/`, with BT4 player names
+and engine metadata including the network and executable hashes. BT4 is not
+assigned a Maia Elo and is excluded from the Maia-anchor rating table. Startup
+diagnostics are in `bt4_policy_server.log`. The benchmark starts only when you run
+the matchup command above.
+
 ### Export logged games to PGN
 
 `export_pgn.py` combines the PGN stored in per-game JSON logs into a single file.

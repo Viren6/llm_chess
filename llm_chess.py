@@ -11,6 +11,7 @@ from custom_agents import (
     ChessEngineStockfishAgent,
     ChessEngineDragonAgent,
     ChessEngineMaiaAgent,
+    ChessEngineBT4PolicyAgent,
     NonGameAgent,
     build_termination_predicate,
     extract_message_text,
@@ -36,8 +37,10 @@ class PlayerType(Enum):
     CHESS_ENGINE_DRAGON = 6  # Add this new entry for Dragon engine
     LLM_NON = 7  # Represents a mixture of agents player using multiple LLMs
     CHESS_ENGINE_MAIA = 8  # Maia 3 human-like, Elo-calibrated anchor opponent
+    CHESS_ENGINE_BT4_POLICY = 9
 
 
+bt4_server = None  # Shared LC0 policyhead server socket (simple harness only).
 white_player_type = PlayerType.RANDOM_PLAYER
 black_player_type = PlayerType.LLM_BLACK
 enable_reflection = False  # Whether to offer the LLM time to think and evaluate moves
@@ -752,7 +755,7 @@ def run_simple(
     correct_pro_model="gpt-5.5-pro",
     api_timeout=7200,
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
-    """Token-lean single-prompt-per-move harness (LLM vs Maia).
+    """Token-lean single-prompt-per-move harness (LLM vs Maia or BT4 policy).
 
     Unlike run()'s multi-turn dialog (separate get_board / get_legal_moves / make_move turns
     with accumulating history), each LLM move here is ONE stateless request: a single prompt
@@ -838,7 +841,13 @@ def run_simple(
                 temperature=maia_temperature, top_p=maia_top_p,
                 is_termination_msg=is_termination_message, time_limit=maia_time_per_move,
             )
-        raise ValueError(f"run_simple supports LLM-vs-Maia only; got {ptype} for {color}")
+        if ptype == PlayerType.CHESS_ENGINE_BT4_POLICY:
+            if not bt4_server:
+                raise ValueError("BT4 policy requires a shared engine server")
+            return ChessEngineBT4PolicyAgent(
+                name=f"Chess_Engine_BT4_Policy_{color.title()}", board=board, socket_path=bt4_server,
+                is_termination_msg=is_termination_message, human_input_mode="NEVER")
+        raise ValueError(f"run_simple supports LLM-vs-Maia/BT4-policy only; got {ptype} for {color}")
 
     player_white = _make_player(white_player_type, "white")
     player_black = _make_player(black_player_type, "black")
@@ -1149,7 +1158,7 @@ def run_simple(
                 player.prep_to_move()
                 if board.is_game_over() or get_legal_moves() is None:
                     break
-                if isinstance(player, ChessEngineMaiaAgent):
+                if isinstance(player, (ChessEngineMaiaAgent, ChessEngineBT4PolicyAgent)):
                     mv = _maia_move(player)
                 else:
                     mv = _llm_move(player, "white" if player is player_white else "black")
@@ -1191,7 +1200,7 @@ def run_simple(
         winner, reason = "NONE", TerminationReason.ERROR.value
     finally:
         for p in (player_white, player_black):
-            if isinstance(p, ChessEngineMaiaAgent):
+            if isinstance(p, (ChessEngineMaiaAgent, ChessEngineBT4PolicyAgent)):
                 p.close()
 
     # PGN (same format as run())
