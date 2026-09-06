@@ -754,6 +754,7 @@ def run_simple(
     correct_nodes=None,
     correct_pro_model="gpt-5.5-pro",
     api_timeout=7200,
+    resume_record=None,
 ) -> Tuple[Dict[str, Any], GameAgent, GameAgent]:
     """Token-lean single-prompt-per-move harness (LLM vs Maia or BT4 policy).
 
@@ -806,7 +807,16 @@ def run_simple(
     global board, san_moves
     board.reset()
     san_moves.clear()
+    if resume_record is not None:
+        from resume_bt4 import checkpoint_board
+        restored = checkpoint_board(resume_record)
+        for move in restored.move_stack:
+            san_moves.append(board.san(move))
+            board.push(move)
     material_count = {"white": 0, "black": 0}
+    if resume_record is not None:
+        mw, mb = calculate_material_count(board)
+        material_count = {"white": mw, "black": mb}
     winner = None
     reason = None
     correction_log = {"moves": 0, "tier_used": {"base": 0, "xhigh": 0, "pro-xhigh": 0},
@@ -1152,9 +1162,11 @@ def run_simple(
         return m.group(1).lower() if m else None
 
     try:
-        current_move = 0
+        current_move = len(board.move_stack)
         while current_move < max_game_moves and not reason:
             for player in (player_white, player_black):
+                if (player is player_white) != board.turn:
+                    continue
                 player.prep_to_move()
                 if board.is_game_over() or get_legal_moves() is None:
                     break
@@ -1217,6 +1229,15 @@ def run_simple(
 
     game_stats = generate_game_stats(time_started, winner, reason, current_move,
                                      player_white, player_black, material_count, pgn_string)
+    if resume_record is not None:
+        game_stats["resume"] = {
+            "source": resume_record.get("_source"),
+            "source_sha256": resume_record.get("_source_sha256"),
+            "starting_ply": resume_record["number_of_moves"],
+            "prior_usage_stats": resume_record.get("usage_stats", {}),
+            "prior_resume": resume_record.get("resume"),
+            "statistics_scope": "usage and player counters cover this continuation only; PGN and number_of_moves cover the full game",
+        }
     if correct_socket:
         game_stats["prompt_type"] = "sf-explain-with-correction"
         game_stats["correction"] = correction_log

@@ -1,0 +1,40 @@
+{
+  "total_games": 1,
+  "white_wins": 0,
+  "black_wins": 1,
+  "draws": 0,
+  "prompt_type": "simple",
+  "reasoning_effort": "max",
+  "player_white": {
+    "name": "Chess_Engine_BT4_Policy_White",
+    "model": ""
+  },
+  "player_black": {
+    "name": "Player_Black",
+    "model": "gpt-6-astra"
+  },
+  "opponent": "bt4-policy",
+  "engine": {
+    "opponent": "bt4-policy",
+    "backend": "blas",
+    "device": "cpu",
+    "search": "policyhead",
+    "nodes": 1,
+    "weights": "/home/privateclient/.local/share/llm-chess/networks/BT4-tf13tune.pb.gz",
+    "weights_sha256": "2696d3f49ad56412ad24bdcbf14c81c9c459197f93d7d0d6f95cb61d3b51e435",
+    "weights_url": "https://storage.lczero.org/files/networks-contrib/big-transformers/BT4-tf13tune.pb.gz",
+    "lc0_sha256": "be761d55ac7bcc8479019887a9d36ebd9a1ded5593136bd3aba7d62050956235",
+    "lc0_path": "/home/privateclient/.local/share/llm-chess/lc0/source/build/lc0",
+    "command": [
+      "/home/privateclient/.local/share/llm-chess/lc0/source/build/lc0",
+      "policyhead",
+      "--weights=/home/privateclient/.local/share/llm-chess/networks/BT4-tf13tune.pb.gz",
+      "--backend=blas",
+      "--backend-opts=batch_size=1",
+      "--nncache=0",
+      "--policy-softmax-temp=1",
+      "--config=/dev/null",
+      "--preload"
+    ]
+  }
+}

@@ -384,3 +384,33 @@ Move made, switching player
 - **Contribute**: Fork, PR improvements to setup, agents, or analysis.
 
 For issues or questions, open a GitHub issue.
+
+### Resume failed Astra/BT4 games
+
+`resume_bt4.py` restores the complete saved PGN history and continues at the next
+ply with Astra max, ChatGPT OAuth, simple UCI, and the original BT4 engine/weights.
+It selects only failed workers with a terminal error in `output.txt`; active and
+completed games are ignored. The error log's placeholder draw result is not a
+finished game result. Recovery keeps the original 200-ply limit.
+
+Preview the recovery plan (read-only, no model or engine requests):
+
+```bash
+.venv/bin/python resume_bt4.py \
+  --logs _logs/oauth-simple/engine_vs_llm/bt4-policy/gpt-6-astra-max \
+  --run 2026-09-06-06-02-23-p1225456 \
+  --out _logs/bt4-recovery
+```
+
+Add `--execute` to run that plan. Recovery runs up to 20 games concurrently (`--concurrency 20`), using its own shared
+LC0 process, socket, and server log. Original files and processes are left alone.
+Both batches still share machine resources and OpenAI model capacity, so wait for
+the original batch to finish if avoiding contention is required. No automatic
+model fallback is used. Another capacity failure is saved for a later continuation.
+
+The output directory must be new. For a later failed continuation, use the previous
+recovery directory as `--logs`, keep the same `--run`, and choose a fresh `--out`.
+Successful continuation PGNs include all original moves; usage and player counters
+cover only the continuation and are labeled in `resume`, which also records source
+hashes and earlier usage. Count each recovered game once, replacing its failed
+attempt when assembling results; do not count the original error as a draw.

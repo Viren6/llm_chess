@@ -185,12 +185,17 @@ def _worker(args):
                                              correct_pro_model=getattr(args, "correct_pro_model",
                                                                        "gpt-5.5-pro"))
     elif prompt_mode in ("simple", "simple-sans", "simple-explain", "simple-sans-explain"):
+        resume_record = None
+        if getattr(args, "resume_json", None):
+            from resume_bt4 import load_checkpoint
+            resume_record = load_checkpoint(args.resume_json)
         notation = "san" if "sans" in prompt_mode else "uci"
         explain = prompt_mode.endswith("explain")
         stats, pw, pb = llm_chess.run_simple(log_dir=args.out, llm_config_white=cfg_w,
                                              llm_config_black=cfg_b, notation=notation, explain=explain,
                                              order_socket=getattr(args, "sf_socket", None),
-                                             order_nodes=getattr(args, "sf_nodes", None))
+                                             order_nodes=getattr(args, "sf_nodes", None),
+                                             resume_record=resume_record)
     else:
         stats, pw, pb = llm_chess.run(log_dir=args.out, llm_config_white=cfg_w, llm_config_black=cfg_b)
 
@@ -549,6 +554,7 @@ def main():
     ap.add_argument("--color", choices=["white", "black"])
     ap.add_argument("--socket")
     ap.add_argument("--out")
+    ap.add_argument("--resume-json", help=argparse.SUPPRESS)
     ap.add_argument("--sf-socket", default=None, help=argparse.SUPPRESS)  # worker-internal
     # launcher:
     ap.add_argument("--prompt",
